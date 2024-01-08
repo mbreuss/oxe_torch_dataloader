@@ -3,11 +3,11 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "{{cookiecutter.package}}"
+name = "Uha"
 authors = [
     {name = "Siddharth Karamcheti", email="skaramcheti@cs.stanford.edu"}
 ]
-description = "{{cookiecutter.project}}: {{cookiecutter.description}}"
+description = "Uha: Minimal adaption of the dataloader proposed in Octo for loading over 25 embodiments."
 version = "0.0.1"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -42,9 +42,9 @@ dev = [
 ]
 
 [project.urls]
-homepage = "{{cookiecutter.repo_link}}"
-repository = "{{cookiecutter.repo_link}}"
-documentation = "{{cookiecutter.repo_link}}"
+homepage = "https://github.com/mbreuss/openrt_torch_dataloader"
+repository = "https://github.com/mbreuss/openrt_torch_dataloader"
+documentation = "https://github.com/mbreuss/openrt_torch_dataloader"
 
 [tool.setuptools.packages.find]
 where = ["."]
