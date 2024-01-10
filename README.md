@@ -22,6 +22,8 @@ Once PyTorch has been properly installed, you can install this package locally v
 ```bash
 git clone https://github.com/mbreuss/openrt_torch_dataloader
 cd openrt_torch_dataloader
+conda create -n uha python=3.9
+conda activate uha
 pip install -e .
 ```
 

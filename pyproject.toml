@@ -5,12 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "Uha"
 authors = [
-    {name = "Siddharth Karamcheti", email="skaramcheti@cs.stanford.edu"}
+    {name = "Siddharth Karamcheti", email="skaramcheti@cs.stanford.edu"},
+    {name = "Marcel Rühle", email="unesl@student.kit.edu"}
 ]
 description = "Uha: Minimal adaption of the dataloader proposed in Octo for loading over 25 embodiments."
 version = "0.0.1"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 keywords = ["machine learning"]
 license = {file = "LICENSE"}
 classifiers = [
@@ -28,9 +29,13 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
+    "numpy==1.24.3",
     "torch",
-    "torchvision",
-    "torchaudio",
+    "tensorflow==2.15.0",
+    "tensorflow_datasets==4.9.2",
+    "tqdm>=4.60.0",
+    "absl-py >= 0.12.0",
+    "dlimp @ git+https://github.com/kvablack/dlimp@d08da3852c149548aaa8551186d619d87375df08"
 ]
 
 [project.optional-dependencies]
