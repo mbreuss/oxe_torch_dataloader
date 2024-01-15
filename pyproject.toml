@@ -11,7 +11,7 @@ authors = [
 description = "Uha: Minimal adaption of the dataloader proposed in Octo for loading over 25 embodiments."
 version = "0.0.1"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["machine learning"]
 license = {file = "LICENSE"}
 classifiers = [
@@ -32,7 +32,8 @@ dependencies = [
     "numpy==1.24.3",
     "torch",
     "tensorflow==2.15.0",
-    "tensorflow_datasets==4.9.2",
+    "tfds-nightly==4.9.4.dev202401150044",
+    "gcsfs",
     "tqdm>=4.60.0",
     "absl-py >= 0.12.0",
     "dlimp @ git+https://github.com/kvablack/dlimp@d08da3852c149548aaa8551186d619d87375df08"

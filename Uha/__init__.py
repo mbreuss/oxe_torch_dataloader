@@ -1,7 +1,7 @@
 from Uha.data.dataset import make_interleaved_dataset
 from Uha.data.oxe import make_oxe_dataset_kwargs_and_weights
 from torch.utils.data import DataLoader
-from Uha.pytorch_oxe_dataloader import TorchRLDSIterableDataset, TorchRLDSTensorDataset
+from Uha.pytorch_oxe_dataloader import TorchRLDSIterableDataset
 
 import tqdm
 import tensorflow as tf
@@ -16,9 +16,9 @@ tf.config.set_visible_devices([], "GPU")
 
 def download_oxe_data():
     dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
+        # DATA_PATH + "/" + DATA_NAME,
         DATA_NAME,
         DATA_PATH,
-        # DOWNLOAD_DIR,
         load_camera_views=("primary", "wrist"),
     )
 
@@ -34,36 +34,10 @@ def download_oxe_data():
     all_dataset_statistics = []
     for dataset_kwargs in dataset_kwargs_list:
         REQUIRED_KEYS = {"observation", "action"}
-        # if dataset_kwargs.__getitem__("language_key") is not None:
-        #     REQUIRED_KEYS.add(dataset_kwargs['language_key'])
-        #
-        # _, dataset_statistics = make_dataset_from_rlds(**dataset_kwargs, train=train)
-        #
-        # builder = tfds.builder(name, data_dir=data_dir)
-        # tfds.load()
-        #
-        # dataset_sizes.append(dataset_statistics["num_transitions"])
-        # all_dataset_statistics.append(dataset_statistics)
-        tfds.load(**dataset_kwargs)
+        name = dataset_kwargs["name"] + ":0.1.0"
+        data_dir = dataset_kwargs["data_dir"]
 
-
-def make_pytorch_oxe_tensor_dataset(dataset=None):
-    if dataset is None:
-        dataset = get_octo_dataset_tensorflow()
-
-    pytorch_dataset = TorchRLDSTensorDataset(dataset)
-    dataloader = DataLoader(
-        pytorch_dataset,
-        batch_size=16,
-        num_workers=0,  # important to keep this to 0 so PyTorch does not mess with the parallelism
-    )
-
-    for i, sample in tqdm.tqdm(enumerate(dataloader)):
-        print(sample)
-        if i == 5000:
-            break
-
-    return dataloader
+        tfds.load(name=name, data_dir=DOWNLOAD_DIR, download=True)
 
 
 def make_pytorch_oxe_iterable_dataset(dataset=None):
@@ -149,4 +123,5 @@ def get_octo_dataset_tensorflow():
     return dataset
 
 
-make_pytorch_oxe_iterable_dataset()
+download_oxe_data()
+# get_octo_dataset_tensorflow()

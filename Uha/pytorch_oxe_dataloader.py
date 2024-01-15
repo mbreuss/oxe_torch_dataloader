@@ -37,34 +37,3 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             return int(0.95 * total_len)
         else:
             return int(0.05 * total_len)
-
-
-class TorchRLDSTensorDataset(torch.utils.data.TensorDataset):
-    """Thin wrapper around RLDS dataset for use with PyTorch dataloaders."""
-
-    def __init__(
-            self,
-            rlds_dataset,
-            train=True,
-    ):
-        self._rlds_dataset = rlds_dataset
-        self._is_train = train
-        super(TorchRLDSTensorDataset, self).__init__(self._rlds_dataset.as_numpy())
-
-    def __getitem__(self, index):
-        return tuple(tensor[index] for tensor in self.tensors)
-
-    def __len__(self):
-        lengths = np.array(
-            [
-                stats["num_transitions"]
-                for stats in self._rlds_dataset.dataset_statistics
-            ]
-        )
-        if hasattr(self._rlds_dataset, "sample_weights"):
-            lengths *= np.array(self._rlds_dataset.sample_weights)
-        total_len = lengths.sum()
-        if self._is_train:
-            return int(0.95 * total_len)
-        else:
-            return int(0.05 * total_len)
