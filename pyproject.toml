@@ -36,7 +36,8 @@ dependencies = [
     "gcsfs",
     "tqdm>=4.60.0",
     "absl-py >= 0.12.0",
-    "dlimp @ git+https://github.com/kvablack/dlimp@d08da3852c149548aaa8551186d619d87375df08"
+    "apache_beam",
+    "dlimp @ git+https://github.com/mbreuss/dlimp_no_tf_dataset_dependency",
 ]
 
 [project.optional-dependencies]

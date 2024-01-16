@@ -9,16 +9,16 @@ import tensorflow_datasets as tfds
 
 DATA_NAME = "oxe_magic_soup"
 DATA_PATH = "gs://gresearch/robotics"  # "gs://rail-orca-central2/resize_256_256"
-DOWNLOAD_DIR = '~/tensorflow_datasets'
+# DOWNLOAD_DIR = '~/tensorflow_datasets'
 
 tf.config.set_visible_devices([], "GPU")
 
 
-def download_oxe_data():
+def download_oxe_data(download_dir):
     dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
         # DATA_PATH + "/" + DATA_NAME,
         DATA_NAME,
-        DATA_PATH,
+        download_dir,
         load_camera_views=("primary", "wrist"),
     )
 
@@ -30,14 +30,8 @@ def download_oxe_data():
         )
 
     # go through datasets once to get sizes
-    dataset_sizes = []
-    all_dataset_statistics = []
     for dataset_kwargs in dataset_kwargs_list:
-        REQUIRED_KEYS = {"observation", "action"}
-        name = dataset_kwargs["name"] + ":0.1.0"
-        data_dir = dataset_kwargs["data_dir"]
-
-        tfds.load(name=name, data_dir=DOWNLOAD_DIR, download=True)
+        tfds.load(name=dataset_kwargs["name"], data_dir=dataset_kwargs["data_dir"], download=True)
 
 
 def make_pytorch_oxe_iterable_dataset(dataset=None):
@@ -121,7 +115,3 @@ def get_octo_dataset_tensorflow():
     )
 
     return dataset
-
-
-download_oxe_data()
-# get_octo_dataset_tensorflow()
