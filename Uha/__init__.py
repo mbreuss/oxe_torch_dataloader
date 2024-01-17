@@ -31,7 +31,11 @@ def download_oxe_data(download_dir):
 
     # go through datasets once to get sizes
     for dataset_kwargs in dataset_kwargs_list:
-        tfds.load(name=dataset_kwargs["name"], data_dir=dataset_kwargs["data_dir"], download=True)
+        if (dataset_kwargs["name"] == "fractal20220817_data" or dataset_kwargs["name"] == "kuka"
+                or dataset_kwargs["name"] == "bridge_dataset"):
+            pass
+        else:
+            _ = tfds.load(name=dataset_kwargs["name"], data_dir=dataset_kwargs["data_dir"], download=True)
 
 
 def make_pytorch_oxe_iterable_dataset(dataset=None):
