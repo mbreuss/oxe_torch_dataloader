@@ -8,7 +8,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 DATA_NAME = "oxe_magic_soup"
-DATA_PATH = "gs://gresearch/robotics"  # "gs://rail-orca-central2/resize_256_256"
+DATA_PATH = "gs://rail-orca-central2/resize_256_256"  # "gs://gresearch/robotics"
 # DOWNLOAD_DIR = '~/tensorflow_datasets'
 
 tf.config.set_visible_devices([], "GPU")
