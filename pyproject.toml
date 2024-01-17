@@ -32,11 +32,12 @@ dependencies = [
     "numpy==1.24.3",
     "torch",
     "tensorflow==2.15.0",
+    "tensorflow-datasets==4.9.2",
+    "tensorflow_graphics==2021.12.3",
     "tfds-nightly==4.9.4.dev202401150044",
     "gcsfs",
     "tqdm>=4.60.0",
     "absl-py >= 0.12.0",
-    "apache_beam",
     "dlimp @ git+https://github.com/mbreuss/dlimp_no_tf_dataset_dependency",
 ]
 

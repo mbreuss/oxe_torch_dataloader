@@ -65,14 +65,14 @@ def download_oxe_data_builder(download_dir):
             builder.download_and_prepare()
 
 
-def make_pytorch_oxe_iterable_dataset(dataset=None):
+def make_pytorch_oxe_iterable_dataset(dataset=None, batch_size=512):
     if dataset is None:
         dataset = get_octo_dataset_tensorflow()
 
     pytorch_dataset = TorchRLDSIterableDataset(dataset)
     dataloader = DataLoader(
         pytorch_dataset,
-        batch_size=16,
+        batch_size=batch_size,
         num_workers=0,  # important to keep this to 0 so PyTorch does not mess with the parallelism
     )
 
