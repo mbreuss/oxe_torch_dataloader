@@ -38,6 +38,33 @@ def download_oxe_data(download_dir):
             _ = tfds.load(name=dataset_kwargs["name"], data_dir=dataset_kwargs["data_dir"], download=True)
 
 
+def download_oxe_data_builder(download_dir):
+    dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
+        # DATA_PATH + "/" + DATA_NAME,
+        DATA_NAME,
+        download_dir,
+        load_camera_views=("primary", "wrist"),
+    )
+
+    if not sample_weights:
+        sample_weights = [1.0] * len(dataset_kwargs_list)
+    if len(sample_weights) != len(dataset_kwargs_list):
+        raise ValueError(
+            f"sample_weights must be None or have length {len(dataset_kwargs_list)}."
+        )
+
+    # go through datasets once to get sizes
+    for dataset_kwargs in dataset_kwargs_list:
+        if (dataset_kwargs["name"] == "fractal20220817_data" or dataset_kwargs["name"] == "kuka"
+                or dataset_kwargs["name"] == "bridge_dataset"):
+            pass
+        else:
+            download_and_prepare_kwargs = {'download_config': tfds.core.download.DownloadConfig(try_download_gcs=False)}
+            builder = tfds.builder(name=dataset_kwargs["name"], data_dir=dataset_kwargs["data_dir"])
+            # download_and_prepare_kwargs = {'download_config': tfds.core.download.DownloadConfig(try_download_gcs=False)}
+            builder.download_and_prepare()
+
+
 def make_pytorch_oxe_iterable_dataset(dataset=None):
     if dataset is None:
         dataset = get_octo_dataset_tensorflow()

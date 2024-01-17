@@ -1,9 +1,9 @@
 # minimum working example to load a single OXE dataset
-from Uha import download_oxe_data
+from Uha import download_oxe_data, download_oxe_data_builder
 
 
 def main():
-    download_oxe_data("~/tensorflow_datasets")
+    download_oxe_data_builder("~/tensorflow_datasets")
 
 
 if __name__ == "__main__":
