@@ -76,11 +76,6 @@ def make_pytorch_oxe_iterable_dataset(dataset=None, batch_size=512):
         num_workers=0,  # important to keep this to 0 so PyTorch does not mess with the parallelism
     )
 
-    for i, sample in tqdm.tqdm(enumerate(dataloader)):
-        print(sample)
-        if i == 5000:
-            break
-
     return dataloader
 
 
