@@ -1,10 +1,10 @@
 {
-  "project": "Uha",
+  "project": "uha",
   "tagline": "Load and adjust Open X-Embodiement Datasets like Octo",
   "description": "Minimal adaption of the dataloader proposed in Octo for loading over 25 embodiments.",
   "repo_name": "openrt_torch_dataloader",
   "repo_link": "https://github.com/mbreuss/openrt_torch_dataloader",
-  "package": "Uha",
+  "package": "uha",
   "torch_min": "PyTorch >= 1.12",
   "torch_vetted": "PyTorch 1.12.0, Torchvision 0.13.0, Torchaudio 0.12.0"
 }
