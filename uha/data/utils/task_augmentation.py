@@ -4,7 +4,7 @@ Contains basic logic for randomly zero-ing out keys in the task specification.
 
 import tensorflow as tf
 
-from Uha.data.utils.data_utils import to_padding
+from uha.data.utils.data_utils import to_padding
 
 
 def delete_task_conditioning(

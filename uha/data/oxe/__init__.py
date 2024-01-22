@@ -2,10 +2,10 @@ import copy
 import logging
 from typing import Any, Dict, List, Sequence, Tuple, Union
 
-from Uha.data.oxe.oxe_dataset_configs import ActionEncoding, OXE_DATASET_CONFIGS
-from Uha.data.oxe.oxe_dataset_mixes import OXE_NAMED_MIXES
-from Uha.data.oxe.oxe_standardization_transforms import OXE_STANDARDIZATION_TRANSFORMS
-from Uha.data.utils.data_utils import NormalizationType
+from uha.data.oxe.oxe_dataset_configs import ActionEncoding, OXE_DATASET_CONFIGS
+from uha.data.oxe.oxe_dataset_mixes import OXE_NAMED_MIXES
+from uha.data.oxe.oxe_standardization_transforms import OXE_STANDARDIZATION_TRANSFORMS
+from uha.data.utils.data_utils import NormalizationType
 
 
 def make_oxe_dataset_kwargs(

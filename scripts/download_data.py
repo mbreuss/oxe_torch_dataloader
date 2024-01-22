@@ -1,9 +1,12 @@
-# minimum working example to load a single OXE dataset
-from Uha import download_oxe_data, download_oxe_data_builder
+# minimum working example to download a single OXE dataset
+from uha import download_oxe_data
+import hydra
+from omegaconf import DictConfig
 
 
-def main():
-    download_oxe_data_builder("~/tensorflow_datasets")
+@hydra.main(config_path="data.utils", config_name="uha_default_load_config")
+def main(cfg: DictConfig):
+    download_oxe_data(cfg)
 
 
 if __name__ == "__main__":

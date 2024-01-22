@@ -5,7 +5,7 @@ Each function should add entries to the "task" dict.
 
 import tensorflow as tf
 
-from Uha.data.utils.data_utils import tree_merge
+from uha.data.utils.data_utils import tree_merge
 
 
 def uniform(traj: dict) -> dict:

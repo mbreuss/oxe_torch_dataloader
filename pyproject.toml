@@ -38,6 +38,7 @@ dependencies = [
     "gcsfs",
     "tqdm>=4.60.0",
     "absl-py >= 0.12.0",
+    "hydra-core==1.1.1",
     "dlimp @ git+https://github.com/mbreuss/dlimp_no_tf_dataset_dependency",
 ]
 

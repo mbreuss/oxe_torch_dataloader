@@ -1,10 +1,14 @@
-# minimum working example to load a single OXE dataset
-from Uha import download_oxe_data, download_oxe_data_builder, make_pytorch_oxe_iterable_dataset
+# minimum working example to load the OXE dataset
+from uha import make_pytorch_oxe_iterable_dataset, get_octo_dataset_tensorflow
 import tqdm
+import hydra
+from omegaconf import DictConfig
 
 
-def main():
-    dataloader = make_pytorch_oxe_iterable_dataset()
+@hydra.main(config_path="data.utils", config_name="uha_default_load_config")
+def main(cfg: DictConfig):
+    dataset = get_octo_dataset_tensorflow(cfg, True)
+    dataloader = make_pytorch_oxe_iterable_dataset(dataset)
     for i, sample in tqdm.tqdm(enumerate(dataloader)):
         print(sample)
         if i == 5000:

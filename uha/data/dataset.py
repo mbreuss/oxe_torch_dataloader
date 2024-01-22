@@ -9,9 +9,9 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from Uha.data import obs_transforms, traj_transforms
-from Uha.data.utils import goal_relabeling, task_augmentation
-from Uha.data.utils.data_utils import (
+from uha.data import obs_transforms, traj_transforms
+from uha.data.utils import goal_relabeling, task_augmentation
+from uha.data.utils.data_utils import (
     allocate_threads,
     get_dataset_statistics,
     NormalizationType,
