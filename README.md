@@ -1,5 +1,5 @@
 # Uha
-<img src="/img/uha_logo.png" alt="Uha Logo" width="512" height="auto">
+<img src="/img/uha_logo.png" alt="Uha Logo" width="400" height="auto">
 > *Uha*: Minimal adaption of the dataloader proposed in Octo for loading over 25 embodiments.
 
 Package repository for Uha: Load and adjust Open X-Embodiement Datasets like Octo.
