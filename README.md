@@ -1,11 +1,12 @@
 # Uha
-<img src="/img/uha_logo.png" alt="Uha Logo" width="930" height="auto">
+<img src="/img/uha_logo.png" alt="Uha Logo" width="850" height="auto">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > *Uha*: Minimal adaption of the dataloader proposed in Octo for loading over 25 embodiments.
 
 Package repository for Uha: Load and adjust Open X-Embodiement Datasets like Octo.
+
 **Work in Progress, currently only Public because we need it for another project.**
 
 ---
