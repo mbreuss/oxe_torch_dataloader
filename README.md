@@ -1,6 +1,7 @@
 # Uha
+<img src="/img/uha_logo.png" alt="Uha Logo" width="930" height="auto">
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-<img src="/img/uha_logo.png" alt="Uha Logo" width="512" height="auto">
 
 > *Uha*: Minimal adaption of the dataloader proposed in Octo for loading over 25 embodiments.
 
