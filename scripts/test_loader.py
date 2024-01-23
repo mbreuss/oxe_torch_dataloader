@@ -5,7 +5,7 @@ import hydra
 from omegaconf import DictConfig
 
 
-@hydra.main(config_path="data.utils", config_name="uha_default_load_config")
+@hydra.main(config_path="uha.data.utils", config_name="uha_default_load_config")
 def main(cfg: DictConfig):
     dataset = get_octo_dataset_tensorflow(cfg, True)
     dataloader = make_pytorch_oxe_iterable_dataset(dataset)

@@ -4,7 +4,7 @@ import hydra
 from omegaconf import DictConfig
 
 
-@hydra.main(config_path="data.utils", config_name="uha_default_load_config")
+@hydra.main(config_path="uha.data.utils", config_name="uha_default_load_config")
 def main(cfg: DictConfig):
     download_oxe_data(cfg)
 
