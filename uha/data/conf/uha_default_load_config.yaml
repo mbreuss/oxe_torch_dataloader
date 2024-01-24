@@ -44,8 +44,8 @@ interleaved_dataset_cfg:
                   "random_hue",
               ]
       resize_size:
-          primary: (256, 256)
-          wrist: (128, 128)
+          primary: [256, 256]
+          wrist: [128, 128]
       num_parallel_calls: 200
   traj_transform_threads: 48
   traj_read_threads: 48
