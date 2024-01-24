@@ -2,7 +2,7 @@ _recursive_: false
 
 DATA_NAME: "oxe_magic_soup"
 DATA_PATH: "gs://gresearch/robotics"
-load_camera_views: ("primary", "wrist")
+load_camera_views: ["primary", "wrist"]
 
 interleaved_dataset_cfg:
   shuffle_buffer_size: 1000
