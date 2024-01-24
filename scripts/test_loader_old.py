@@ -5,7 +5,7 @@ import hydra
 from omegaconf import DictConfig
 
 
-def main(cfg: DictConfig):
+def main():
     dataset = get_octo_dataset_tensorflow_old(True)
     dataloader = make_pytorch_oxe_iterable_dataset(dataset)
     for i, sample in tqdm.tqdm(enumerate(dataloader)):
