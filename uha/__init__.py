@@ -1,6 +1,6 @@
 from uha.data.dataset import make_interleaved_dataset
 from uha.data.oxe import make_oxe_dataset_kwargs_and_weights
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
 from uha.pytorch_oxe_dataloader import TorchRLDSIterableDataset
 
@@ -48,139 +48,14 @@ def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool):
         load_camera_views=cfg.load_camera_views,
     )
 
-    dataset = make_interleaved_dataset(
-        dataset_kwargs_list,
-        sample_weights,
-        train=train,
-        **cfg.interleaved_dataset_cfg,
-    )
-
-    return dataset
-
-
-def get_octo_dataset_tensorflow_test(cfg: DictConfig, train: bool):
-    dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
-        cfg.DATA_NAME,
-        cfg.DATA_PATH,
-        load_camera_views=cfg.load_camera_views,
-    )
+    # create instance of interleaved_dataset_cfg for transforms to work
+    interleaved_dataset_cfg = OmegaConf.to_object(cfg.interleaved_dataset_cfg)
 
     dataset = make_interleaved_dataset(
         dataset_kwargs_list,
         sample_weights,
         train=train,
-        shuffle_buffer_size=1000,
-        # change to 500k for training, large shuffle buffers are important, but adjust to your RAM
-        batch_size=None,  # batching will be handles in PyTorch Dataloader object
-        balance_weights=True,
-        traj_transform_kwargs=dict(
-            goal_relabeling_strategy="uniform",
-            window_size=2,
-            future_action_window_size=3,
-            subsample_length=100,
-        ),
-        frame_transform_kwargs=dict(
-            image_augment_kwargs={
-                "primary": dict(
-                    random_resized_crop=dict(scale=[0.8, 1.0], ratio=[0.9, 1.1]),
-                    random_brightness=[0.1],
-                    random_contrast=[0.9, 1.1],
-                    random_saturation=[0.9, 1.1],
-                    random_hue=[0.05],
-                    augment_order=[
-                        "random_resized_crop",
-                        "random_brightness",
-                        "random_contrast",
-                        "random_saturation",
-                        "random_hue",
-                    ],
-                ),**cfg.interleaved_dataset_cfg,
-                "wrist": dict(
-                    random_brightness=[0.1],
-                    random_contrast=[0.9, 1.1],
-                    random_saturation=[0.9, 1.1],
-                    random_hue=[0.05],
-                    augment_order=[
-                        "random_brightness",
-                        "random_contrast",
-                        "random_saturation",
-                        "random_hue",
-                    ],
-                ),
-            },
-            resize_size=dict(
-                primary=(256, 256),
-                wrist=(128, 128),
-            ),
-            num_parallel_calls=200,
-        ),
-        traj_transform_threads=48,
-        traj_read_threads=48,
-    )
-
-    return dataset
-
-
-def get_octo_dataset_tensorflow_old(train: bool):
-    DATA_NAME = "oxe_magic_soup"
-    DATA_PATH = "gs://gresearch/robotics"
-    dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
-        DATA_NAME,
-        DATA_PATH,
-        load_camera_views=("primary", "wrist"),
-    )
-
-    dataset = make_interleaved_dataset(
-        dataset_kwargs_list,
-        sample_weights,
-        train=train,
-        shuffle_buffer_size=1000,
-        # change to 500k for training, large shuffle buffers are important, but adjust to your RAM
-        batch_size=None,  # batching will be handles in PyTorch Dataloader object
-        balance_weights=True,
-        traj_transform_kwargs=dict(
-            goal_relabeling_strategy="uniform",
-            window_size=2,
-            future_action_window_size=3,
-            subsample_length=100,
-        ),
-        frame_transform_kwargs=dict(
-            image_augment_kwargs={
-                "primary": dict(
-                    random_resized_crop=dict(scale=[0.8, 1.0], ratio=[0.9, 1.1]),
-                    random_brightness=[0.1],
-                    random_contrast=[0.9, 1.1],
-                    random_saturation=[0.9, 1.1],
-                    random_hue=[0.05],
-                    augment_order=[
-                        "random_resized_crop",
-                        "random_brightness",
-                        "random_contrast",
-                        "random_saturation",
-                        "random_hue",
-                    ],
-                ),
-                "wrist": dict(
-                    random_brightness=[0.1],
-                    random_contrast=[0.9, 1.1],
-                    random_saturation=[0.9, 1.1],
-                    random_hue=[0.05],
-                    augment_order=[
-                        "random_brightness",
-                        "random_contrast",
-                        "random_saturation",
-                        "random_hue",
-                    ],
-                ),
-            },
-            resize_size=dict(
-                primary=(256, 256),
-                wrist=(128, 128),
-            ),
-            num_parallel_calls=200,
-        ),
-        traj_transform_threads=48,
-        traj_read_threads=48,
+        **interleaved_dataset_cfg,
     )
 
     return dataset

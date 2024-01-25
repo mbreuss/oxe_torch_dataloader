@@ -42,6 +42,10 @@ OXE_FRANKA_MIX = [
     ("cmu_play_fusion", 1.0),
 ]
 
+SMALL_TEST_SET = [
+    ("stanford_hydra_dataset_converted_externally_to_rlds", 2.0),
+    ("austin_buds_dataset_converted_externally_to_rlds", 1.0),
+]
 
 OXE_MAGIC_SOUP = [
     ("fractal20220817_data", 0.54087122203),
@@ -133,4 +137,5 @@ OXE_NAMED_MIXES = {
     "rtx": RT_X_MIX,
     "rtx_franka": RT_X_MIX + OXE_FRANKA_MIX,
     "oxe_magic_soup": OXE_MAGIC_SOUP,
+    "small_test": SMALL_TEST_SET
 }
