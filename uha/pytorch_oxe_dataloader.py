@@ -15,13 +15,15 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             self,
             rlds_dataset,
             train=True,
+            transform_dict=None
     ):
         self._rlds_dataset = rlds_dataset
         self._is_train = train
+        self._transform_dict = transform_dict
 
     def __iter__(self):
         for sample in self._rlds_dataset.as_numpy_iterator():
-            yield sample
+            yield self.transformed_sample(sample)
 
     def __len__(self):
         lengths = np.array(
@@ -37,3 +39,9 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             return int(0.95 * total_len)
         else:
             return int(0.05 * total_len)
+
+    def transformed_sample(self, sample):
+        if self._transform_dict is not None:
+            return sample
+        else:
+            return sample

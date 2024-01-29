@@ -11,7 +11,7 @@ def main(cfg: DictConfig):
     dataloader = make_pytorch_oxe_iterable_dataset(dataset)
     for i, sample in tqdm.tqdm(enumerate(dataloader)):
         print(sample)
-        if i == 5000:
+        if i == 1:
             break
 
 
