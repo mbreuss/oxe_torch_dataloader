@@ -7,10 +7,15 @@ from omegaconf import DictConfig
 
 @hydra.main(config_path="../uha/data/conf", config_name="uha_default_load_config")
 def main(cfg: DictConfig):
-    dataset = get_octo_dataset_tensorflow(cfg, True)
-    dataloader = make_pytorch_oxe_iterable_dataset(dataset)
+    # load Training Dataset from TensorflowDatasets
+    dataset = get_octo_dataset_tensorflow(cfg, train=True)
+    # create Pytorch Train Dataset
+    dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512)
     for i, sample in tqdm.tqdm(enumerate(dataloader)):
-        print(sample)
+        print("Top-level keys: ", sample.keys())
+        print("Observation keys: ", sample["observation"].keys())
+        print("Task keys: ", sample["task"].keys())
+        print("Action keys: ", sample["action"].keys())
         if i == 1:
             break
 

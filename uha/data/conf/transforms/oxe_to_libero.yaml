@@ -1,0 +1,6 @@
+# transform_dict, from -> to
+first_level:
+  primary: ["rgb_obs", "rgb_static"]
+  wrist: ["rgb_obs", "rgb_gripper"]
+  observation: "robot_obs"
+  action: "actions"

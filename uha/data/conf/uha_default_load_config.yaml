@@ -1,5 +1,8 @@
 _recursive_: false
 
+defaults:
+  - transforms: oxe_to_libero
+
 DATA_NAME: "oxe_magic_soup"  # "small_test"
 DATA_PATH: "gs://gresearch/robotics"
 load_camera_views: ["primary", "wrist"]
