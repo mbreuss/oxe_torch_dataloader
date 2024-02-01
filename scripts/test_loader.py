@@ -14,8 +14,8 @@ def main(cfg: DictConfig):
     dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512, transform_dict=cfg_transforms)
     for i, sample in tqdm.tqdm(enumerate(dataloader)):
         print("Top-level keys: ", sample.keys())
-        print("Observation keys: ", sample["observation"].keys())
-        print("Task keys: ", sample["task"].keys())
+        print("rgb_obs keys: ", sample["rgb_obs"].keys())
+        # print("Task keys: ", sample["task"].keys())
         break
 
 
