@@ -45,10 +45,16 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             return sample
         else:
             transformed_sample = {}
+            # { observation: { image_primary: ["rgb_obs", "rgb_static"], ... }, ...}
             for old_key, value in self._transform_dict.items():
                 if isinstance(value, dict):
-                    for second_old_key, new_value in self._transform_dict.items():
-                        transformed_sample[new_value] = sample[old_key][second_old_key]
+                    for second_old_key, new_value in value:
+                        if isinstance(new_value, list) and len(new_value) == 2:
+                            transformed_sample[new_value[0]][new_value[1]] = sample[old_key][second_old_key]
+                        if isinstance(new_value, list) and len(new_value) == 1:
+                            transformed_sample[new_value[0]] = sample[old_key][second_old_key]
+                        else:
+                            transformed_sample[new_value] = sample[old_key][second_old_key]
                 else:
                     transformed_sample[value] = sample[old_key]
 
