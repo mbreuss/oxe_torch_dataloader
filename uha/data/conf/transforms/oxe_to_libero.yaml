@@ -1,6 +1,10 @@
+# Top-level keys: dict_keys(['observation', 'task', 'action', 'dataset_name', 'absolute_action_mask'])
+# Observation keys:  dict_keys(['image_primary', 'image_wrist', 'proprio', 'timestep', 'pad_mask_dict', 'pad_mask'])
+# Task keys:  dict_keys(['language_instruction', 'pad_mask_dict', 'image_primary', 'image_wrist', 'proprio', 'timestep'])
+
 # transform_dict, from -> to
-first_level:
-  primary: ["rgb_obs", "rgb_static"]
-  wrist: ["rgb_obs", "rgb_gripper"]
-  observation: "robot_obs"
-  action: "actions"
+observation:
+  image_primary: ["rgb_obs", "rgb_static"] # should be: (traj_len, window_size, height, width, channels)
+  image_wrist: ["rgb_obs", "rgb_gripper"] # should be: (traj_len, window_size, height, width, channels)
+
+action: "actions" # should be: (batch_size, window_size + future_action_window_size, action_dim)

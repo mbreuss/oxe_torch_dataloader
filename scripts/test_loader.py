@@ -15,9 +15,7 @@ def main(cfg: DictConfig):
         print("Top-level keys: ", sample.keys())
         print("Observation keys: ", sample["observation"].keys())
         print("Task keys: ", sample["task"].keys())
-        print("Action keys: ", sample["action"].keys())
-        if i == 1:
-            break
+        break
 
 
 if __name__ == "__main__":

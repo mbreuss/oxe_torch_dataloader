@@ -1,5 +1,8 @@
 _recursive_: false
 
+# Top-level keys: dict_keys(['observation', 'task', 'action', 'dataset_name', 'absolute_action_mask'])
+# Observation keys:  dict_keys(['image_primary', 'image_wrist', 'proprio', 'timestep', 'pad_mask_dict', 'pad_mask'])
+# Task keys:  dict_keys(['language_instruction', 'pad_mask_dict', 'image_primary', 'image_wrist', 'proprio', 'timestep'])
 defaults:
   - transforms: oxe_to_libero
 

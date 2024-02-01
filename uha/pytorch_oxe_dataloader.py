@@ -45,6 +45,11 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             return sample
         else:
             transformed_sample = {}
-            for key in self._transform_dict:
-                transformed_sample[self._transform_dict[key]] = sample[key]
+            for old_key, value in self._transform_dict.items():
+                if isinstance(value, dict):
+                    for second_old_key, new_value in self._transform_dict.items():
+                        transformed_sample[new_value] = sample[old_key][second_old_key]
+                else:
+                    transformed_sample[value] = sample[old_key]
+
             return transformed_sample
