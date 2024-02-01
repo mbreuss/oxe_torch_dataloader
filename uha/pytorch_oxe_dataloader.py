@@ -50,7 +50,8 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 if isinstance(value, dict):
                     for second_old_key, new_value in value.items():
                         if isinstance(new_value, list) and len(new_value) == 2:
-                            transformed_sample[new_value[0]] = {} if transformed_sample[new_value[0]] is None else transformed_sample[new_value[0]]
+                            if new_value[0] not in transformed_sample.keys():
+                                transformed_sample[new_value[0]] = {}
                             transformed_sample[new_value[0]][new_value[1]] = sample[old_key][second_old_key]
                         if isinstance(new_value, list) and len(new_value) == 1:
                             transformed_sample[new_value[0]] = sample[old_key][second_old_key]
@@ -58,7 +59,8 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                             transformed_sample[new_value] = sample[old_key][second_old_key]
                 else:
                     if isinstance(value, list) and len(value) == 2:
-                        transformed_sample[value[0]] = {} if transformed_sample[value[0]] is None else transformed_sample[value[0]]
+                        if value[0] not in transformed_sample.keys():
+                            transformed_sample[value[0]] = {}
                         transformed_sample[value[0]][value[1]] = sample[old_key]
                     if isinstance(value, list) and len(value) == 1:
                         transformed_sample[value[0]] = sample[old_key]
