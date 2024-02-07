@@ -27,6 +27,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             transformed_sample["rgb_obs"]["rgb_static"] = torch.from_numpy(np.moveaxis(transformed_sample["rgb_obs"]["rgb_static"], 3, 1)).half()
             transformed_sample["rgb_obs"]["rgb_gripper"] = torch.from_numpy(np.moveaxis(transformed_sample["rgb_obs"]["rgb_gripper"], 3, 1)).half()
             transformed_sample["actions"] = torch.from_numpy(transformed_sample["actions"]).to(transformed_sample["rgb_obs"]["rgb_static"].dtype)
+            transformed_sample['depth_obs'] = {}
             yield transformed_sample
 
     def __len__(self):
