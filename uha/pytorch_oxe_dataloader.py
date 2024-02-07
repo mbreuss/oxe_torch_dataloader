@@ -23,7 +23,10 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
 
     def __iter__(self):
         for sample in self._rlds_dataset.as_numpy_iterator():
-            yield self.transform_sample(sample)
+            transformed_sample = self.transform_sample(sample)
+            transformed_sample["rgb_obs"]["rgb_static"] = np.moveaxis(transformed_sample["rgb_obs"]["rgb_static"], 3, 1)
+            transformed_sample["rgb_obs"]["rgb_gripper"] = np.moveaxis(transformed_sample["rgb_obs"]["rgb_gripper"], 3, 1)
+            yield transformed_sample
 
     def __len__(self):
         lengths = np.array(

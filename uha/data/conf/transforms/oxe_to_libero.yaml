@@ -4,7 +4,10 @@
 
 # transform_dict, from -> to
 observation:
-  image_primary: ["rgb_obs", "rgb_static"] # should be: (traj_len, window_size, height, width, channels)
+  image_primary: ["rgb_obs", "rgb_static"] # should be: (traj_len, window_size, height, width, channels), (16, 2, 256, 256, 3)
   image_wrist: ["rgb_obs", "rgb_gripper"] # should be: (traj_len, window_size, height, width, channels)
+  proprio: "robot_obs"
 
 action: "actions" # should be: (batch_size, window_size + future_action_window_size, action_dim)
+task:
+  language_instruction: "lang_text"

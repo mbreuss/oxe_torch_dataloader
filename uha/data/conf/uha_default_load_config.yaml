@@ -18,7 +18,7 @@ interleaved_dataset_cfg:
   traj_transform_kwargs:
     goal_relabeling_strategy: "uniform"
     window_size: 2
-    future_action_window_size: 3
+    future_action_window_size: 0
     subsample_length: 100
 
   frame_transform_kwargs:
