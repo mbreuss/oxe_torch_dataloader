@@ -6,11 +6,7 @@
 observation:
   image_primary: ["rgb_obs", "rgb_static"] # should be: (traj_len, window_size, height, width, channels), (16, 2, 256, 256, 3)
   image_wrist: ["rgb_obs", "rgb_gripper"] # should be: (traj_len, window_size, height, width, channels)
-<<<<<<< HEAD
-  proprio: "robot_obs"
-=======
   proprio: "robot_obs" # should be: (batch_size, window_size, action_dim)
->>>>>>> 7a553b1d67cf0457f2d40e1bf0d4096820f75964
 
 action: "actions" # should be: (batch_size, window_size + future_action_window_size, action_dim)
 task:
