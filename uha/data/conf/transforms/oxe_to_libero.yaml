@@ -2,12 +2,18 @@
 # Observation keys:  dict_keys(['image_primary', 'image_wrist', 'proprio', 'timestep', 'pad_mask_dict', 'pad_mask'])
 # Task keys:  dict_keys(['language_instruction', 'pad_mask_dict', 'image_primary', 'image_wrist', 'proprio', 'timestep'])
 
-# transform_dict, from -> to
-observation:
-  image_primary: ["rgb_obs", "rgb_static"] # should be: (traj_len, window_size, height, width, channels), (16, 2, 256, 256, 3)
-  image_wrist: ["rgb_obs", "rgb_gripper"] # should be: (traj_len, window_size, height, width, channels)
-  proprio: "robot_obs" # should be: (batch_size, window_size, action_dim)
+combine_goal_obs: True
+move_axis: True
+add_empty_key: ["depth_obs", "rgb_obs"]
+adjust_type: torch.float16
 
-action: "actions" # should be: (batch_size, window_size + future_action_window_size, action_dim)
-task:
-  language_instruction: "lang_text"
+# transform_dict, from -> to, 2:2 currently mapped
+key_remapping:
+  observation:
+    image_primary: ["rgb_obs", "rgb_static"] # should be: (traj_len, window_size, height, width, channels), (16, 2, 256, 256, 3)
+    image_wrist: ["rgb_obs", "rgb_gripper"] # should be: (traj_len, window_size, height, width, channels)
+    proprio: "robot_obs" # should be: (batch_size, window_size, action_dim)
+
+  action: "actions" # should be: (batch_size, window_size + future_action_window_size, action_dim)
+  task:
+    language_instruction: "lang_text"

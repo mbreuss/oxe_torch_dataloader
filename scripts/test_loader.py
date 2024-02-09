@@ -15,15 +15,15 @@ def main(cfg: DictConfig):
     # dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512)
     for sample in dataloader:
     # for i, sample in tqdm.tqdm(enumerate(dataloader)):
-        # print("Top-level keys: ", sample.keys())
+        print("Top-level keys: ", sample.keys())
         # print("rgb_obs keys: ", sample["rgb_obs"].keys())
         # print("Task keys: ", sample["task"].keys())
 
-        print("Top-level keys: ", sample.keys())
-        print("Task keys: ", sample["task"].keys())
-        print("task image_primary shape: ", sample["task"]["image_primary"].shape)
-        print("observation image_primary shape: ", sample["observation"]["image_primary"].shape)
-        print("observation_proprio shape: ", sample["observation"]["proprio"].shape)
+        # print("Top-level keys: ", sample.keys())
+        # print("Task keys: ", sample["task"].keys())
+        # print("task image_primary shape: ", sample["task"]["image_primary"].shape)
+        # print("observation image_primary shape: ", sample["observation"]["image_primary"].shape)
+        # print("observation_proprio shape: ", sample["observation"]["proprio"].shape)
         break
 
 
