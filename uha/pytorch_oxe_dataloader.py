@@ -54,7 +54,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 sample["action"] = torch.from_numpy(sample["action"]).to(dtype=dtype)
 
             if self._bytes_to_string:
-                sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("Unicode")
+                sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
             
             # moved _key_remapping into transform_sample
             yield self.transform_sample(sample)

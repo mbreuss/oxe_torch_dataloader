@@ -11,8 +11,8 @@ def main(cfg: DictConfig):
     dataset = get_octo_dataset_tensorflow(cfg, train=True)
     cfg_transforms = OmegaConf.to_object(cfg.transforms)
     # create Pytorch Train Dataset
-    dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512, transform_dict=cfg_transforms)
-    # dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512)
+    # dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512, transform_dict=cfg_transforms)
+    dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512)
     for sample in dataloader:
     # for i, sample in tqdm.tqdm(enumerate(dataloader)):
         print("Top-level keys: ", sample.keys())
