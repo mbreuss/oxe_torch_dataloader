@@ -25,12 +25,15 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         self._move_axis = False
         self._add_empty_key = []
         self._adjust_type = None
+        self._bytes_to_string = True
+
         if transform_dict is not None:
             self._key_remapping = transform_dict["key_remapping"]
             self._combine_goal_obs = transform_dict["combine_goal_obs"]
             self._move_axis = transform_dict["move_axis"]
             self._add_empty_key = transform_dict["add_empty_key"]
             self._adjust_type = transform_dict["adjust_type"]
+            self._bytes_to_string = transform_dict["bytes_to_string"]
 
     def __iter__(self):
         for sample in self._rlds_dataset.as_numpy_iterator():
@@ -49,6 +52,9 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 sample["observation"]["image_primary"] = torch.from_numpy(sample["observation"]["image_primary"]).to(dtype=dtype)
                 sample["observation"]["image_wrist"] = torch.from_numpy(sample["observation"]["image_wrist"]).to(dtype=dtype)
                 sample["action"] = torch.from_numpy(sample["action"]).to(dtype=dtype)
+
+            if self._bytes_to_string:
+                sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("Unicode")
             
             # moved _key_remapping into transform_sample
             yield self.transform_sample(sample)
