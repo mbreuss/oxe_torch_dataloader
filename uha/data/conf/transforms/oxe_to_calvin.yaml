@@ -18,3 +18,4 @@ key_remapping:
   action: "actions" # should be: (batch_size, window_size + future_action_window_size, action_dim)
   task:
     language_instruction: "lang_text"
+    pad_mask_dict: "language_instruction_pad_mask"
