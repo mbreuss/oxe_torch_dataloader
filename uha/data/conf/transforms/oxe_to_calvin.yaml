@@ -19,3 +19,5 @@ key_remapping:
   task:
     language_instruction: "lang_text"
     pad_mask_dict: "language_instruction_pad_mask"
+    
+  current_index: "current_index"

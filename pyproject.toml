@@ -9,7 +9,7 @@ authors = [
     {name = "Marcel Rühle", email="unesl@student.kit.edu"}
 ]
 description = "Uha: Minimal adaption of the dataloader proposed in Octo for loading over 25 embodiments."
-version = "0.2.1"
+version = "0.2.2"
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["machine learning"]
