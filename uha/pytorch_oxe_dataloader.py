@@ -47,14 +47,14 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 sample["observation"]["image_primary"] = np.moveaxis(sample["observation"]["image_primary"], 3, 1)
                 sample["observation"]["image_wrist"] = np.moveaxis(sample["observation"]["image_wrist"], 3, 1)
 
+            if self._bytes_to_string:
+                sample["task"]["language_instruction"] = np.array(sample["task"]["language_instruction"].decode("utf-8"))
+            
             if self._adjust_type is not None:
                 dtype = hydra_get_object(self._adjust_type)
                 sample["observation"]["image_primary"] = torch.from_numpy(sample["observation"]["image_primary"]).to(dtype=dtype)
                 sample["observation"]["image_wrist"] = torch.from_numpy(sample["observation"]["image_wrist"]).to(dtype=dtype)
                 sample["action"] = torch.from_numpy(sample["action"]).to(dtype=dtype)
-
-            if self._bytes_to_string:
-                sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
             
             # moved _key_remapping into transform_sample
             yield self.transform_sample(sample)
