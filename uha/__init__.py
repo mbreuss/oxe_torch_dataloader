@@ -30,12 +30,13 @@ def download_oxe_data(cfg: DictConfig):
         _ = tfds.load(name=dataset_kwargs["name"], data_dir=dataset_kwargs["data_dir"], download=True)
 
 
-def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False):
+def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False):
     return DataLoader(
         TorchRLDSIterableDataset(dataset, train, transform_dict),
         batch_size=batch_size,
         num_workers=num_workers,  # important to keep this to 0 so PyTorch does not mess with the parallelism
         pin_memory=pin_memory,
+        drop_last=drop_last,
     )
 
 
