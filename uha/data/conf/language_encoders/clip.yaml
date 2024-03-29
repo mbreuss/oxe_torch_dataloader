@@ -1,0 +1,5 @@
+_target_: uha.data.language_encoders.clip_tokens.TokenClip
+_recursive_: false
+
+device: cpu
+pretrained_model: "openai/clip-vit-base-patch32"

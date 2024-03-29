@@ -4,7 +4,8 @@ _recursive_: false
 # Observation keys:  dict_keys(['image_primary', 'image_wrist', 'proprio', 'timestep', 'pad_mask_dict', 'pad_mask'])
 # Task keys:  dict_keys(['language_instruction', 'pad_mask_dict', 'image_primary', 'image_wrist', 'proprio', 'timestep'])
 defaults:
-  - transforms: oxe_to_calvin
+  - transforms: oxe_to_testpolicy # oxe_to_calvin
+  - language_encoders: clip # clip # no_encoder
 
 DATA_NAME: rtx # "rtx" # "small_test" # "oxe_magic_soup"
 DATA_PATH: "gs://gresearch/robotics"

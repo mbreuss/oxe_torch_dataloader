@@ -5,8 +5,9 @@ shuffle buffer size, which are reduced for demonstration purposes).
 """
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+import torch.nn as nn
 from uha.data.utils.data_utils import hydra_get_object
+from uha.data.language_encoders.no_encoder import NoEncoder
 
 
 class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
@@ -16,14 +17,16 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             self,
             rlds_dataset,
             train=True,
-            transform_dict=None
+            transform_dict = None,
+            language_encoder: nn.Module = NoEncoder(),
     ):
         self._rlds_dataset = rlds_dataset
         self._current_index = 0
         self._is_train = train
+        self._language_encoder = language_encoder
         self._key_remapping = None
         self._combine_goal_obs = False
-        self._move_axis = False
+        self._move_axis = True
         self._add_empty_key = []
         self._adjust_type = None
         self._bytes_to_string = True
@@ -60,6 +63,12 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 sample["current_index"] = torch.tensor(self._current_index).to(dtype=torch.int32)
                 self._current_index += 1
                 sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
+            
+            if sample["task"]["pad_mask_dict"]["language_instruction"]:
+                print(sample["task"]["language_instruction"])
+                sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
+            else:
+                sample["task"]["language_instruction"] = self._language_encoder("asdf")
             
             # moved _key_remapping into transform_sample
             yield self.transform_sample(sample)
