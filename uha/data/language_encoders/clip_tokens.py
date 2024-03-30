@@ -14,7 +14,6 @@ class TokenClip(nn.Module):
         self.device = device
 
     def forward(self, batch_text):
-
-        batch_text_ids = self.tokenizer(batch_text, return_tensors = 'pt', padding = True, truncation = True, max_length = 128).to(self.device)
+        batch_text_ids = self.tokenizer(batch_text, return_tensors = 'pt', padding = "max_length", truncation = True, max_length = 15).to(self.device)
         batch_text_embed = self.text_encoder(**batch_text_ids).last_hidden_state
         return batch_text_embed

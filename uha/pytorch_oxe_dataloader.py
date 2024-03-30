@@ -62,13 +62,12 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             if self._bytes_to_string:
                 sample["current_index"] = torch.tensor(self._current_index).to(dtype=torch.int32)
                 self._current_index += 1
-                sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
-            
-            if sample["task"]["pad_mask_dict"]["language_instruction"]:
-                print(sample["task"]["language_instruction"])
-                sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
-            else:
-                sample["task"]["language_instruction"] = self._language_encoder("asdf")
+
+                if sample["task"]["pad_mask_dict"]["language_instruction"]:
+                    sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
+                    sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
+                else:
+                    sample["task"]["language_instruction"] = self._language_encoder("")
             
             # moved _key_remapping into transform_sample
             yield self.transform_sample(sample)
