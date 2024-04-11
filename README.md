@@ -25,8 +25,8 @@ pip install -e .
 
 ## Usage
 
-Provides a minimal setup to load the `pytorch_oxe_dataloader` from Octo without additional content.
-Simply install this repo via pip and use `make_pytorch_oxe_iterable_dataset(dataset, batch_size)`.
+Provides a minimal setup to load the [pytorch_oxe_dataloader from Octo](https://github.com/octo-models/octo/blob/main/examples/06_pytorch_oxe_dataloader.py) without additional content.
+Simply install this repo and use `make_pytorch_oxe_iterable_dataset(dataset, batch_size)`. Example Scripts can be found [here](./scripts/README.md).
 
 ---
 
