@@ -26,7 +26,7 @@ def main(cfg: DictConfig):
         # print("task image_primary shape: ", sample["task"]["image_primary"].shape)
         # print("observation image_primary shape: ", sample["observation"]["image_primary"].shape)
 
-        print("task language tokens: ", sample["lang_text"].shape)
+        print("task language tokens: ", sample["lang_text"]["input_ids"].shape)
         # print("observation_proprio shape: ", sample["observation"]["proprio"].shape)
         break
 

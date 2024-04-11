@@ -1,5 +1,0 @@
-_recursive_: false
-
-DATA_NAME: "oxe_magic_soup"
-download_dir: "~/tensorflow_datasets"
-load_camera_views: ("primary", "wrist")
