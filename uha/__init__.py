@@ -4,9 +4,12 @@ from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
 from uha.pytorch_oxe_dataloader import TorchRLDSIterableDataset
 from uha.data.utils.data_utils import NormalizationType
+import tensorflow as tf
 
 import torch.nn as nn
 import dlimp as dl
+
+tf.config.set_visible_devices([], "GPU")
 
 def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn.Module = None, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False):
     if language_encoder is not None:
