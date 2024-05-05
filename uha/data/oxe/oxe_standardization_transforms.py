@@ -14,6 +14,7 @@ step = {
 
 from typing import Any, Dict
 
+import numpy as np
 import tensorflow as tf
 
 from uha.data.utils.data_utils import (
@@ -22,6 +23,19 @@ from uha.data.utils.data_utils import (
     rel2abs_gripper_actions,
     relabel_actions,
 )
+
+
+def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    trajectory["action"] = tf.concat(
+        [
+            trajectory["action"][:, :6],
+            binarize_gripper_actions(trajectory["action"][:, -1])[:, None],
+        ],
+        axis=1,
+    )
+    trajectory["observation"]["EEF_state"] = tf.stack([trajectory["observation"]["end_effector_pos"][:, :], trajectory["observation"]["end_effector_ori"][:, :]], axis=1)
+    trajectory["observation"]["gripper_state"] = trajectory["action_gripper_width"]
+    return trajectory
 
 
 def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
@@ -795,6 +809,7 @@ def gnm_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 
 OXE_STANDARDIZATION_TRANSFORMS = {
+    "kit_irl_real_kitchen": kit_irl_dataset_transform,
     "bridge_dataset": bridge_dataset_transform,
     "fractal20220817_data": rt1_dataset_transform,
     "kuka": kuka_dataset_transform,

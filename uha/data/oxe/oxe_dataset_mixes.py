@@ -153,11 +153,16 @@ OXE_FULL_MIX = [
     ("berkeley_gnm_sac_son", 1.0),
 ]
 
+KIT_IRL_REAL_KITCHEN = [
+    ("kit_irl_real_kitchen", 1.0),
+]
+
 OXE_NAMED_MIXES = {
     "bridge": BRIDGE_MIX,
     "rtx": RT_X_MIX,
     "rtx_franka": RT_X_MIX + OXE_FRANKA_MIX,
     "oxe_magic_soup": OXE_MAGIC_SOUP,
     "oxe_magic_soup_lang_only": OXE_MAGIC_SOUP_LANG_ONLY,
-    "small_test": SMALL_TEST_SET
+    "small_test": SMALL_TEST_SET,
+    "finetune_data": KIT_IRL_REAL_KITCHEN,
 }

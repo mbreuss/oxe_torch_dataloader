@@ -331,12 +331,12 @@ def binarize_gripper_actions(actions: tf.Tensor) -> tf.Tensor:
     closed_mask = actions < 0.05
     in_between_mask = tf.logical_not(tf.logical_or(open_mask, closed_mask))
 
-    is_open_float = tf.cast(open_mask, tf.float32)
+    is_open_float = tf.cast(open_mask, actions.dtype)
 
     def scan_fn(carry, i):
         return tf.cond(
             in_between_mask[i],
-            lambda: tf.cast(carry, tf.float32),
+            lambda: tf.cast(carry, actions.dtype),
             lambda: is_open_float[i],
         )
 
