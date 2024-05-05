@@ -7,7 +7,7 @@ defaults:
   - transforms: oxe_to_testpolicy # oxe_to_calvin
   - language_encoders: clip # clip # no_encoder
 
-DATA_NAME: finetune_data # rtx # oxe_magic_soup # oxe_magic_soup_lang_only # small_test # finetune_data
+DATA_NAME: oxe_magic_soup_lang_only # rtx # oxe_magic_soup # oxe_magic_soup_lang_only # small_test # finetune_data
 DATA_PATH: "gs://gresearch/robotics"
 load_camera_views: ["primary", "wrist"]
 # action_proprio_normalization_type: bounds # bounds # normal
