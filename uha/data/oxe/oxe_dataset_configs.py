@@ -48,6 +48,7 @@ OXE_DATASET_CONFIGS = {
         "state_obs_keys": ["end_effector_pos", "end_effector_ori", None],
         "state_encoding": StateEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
+        "data_dir": "~/tensorflow_datasets"
     },
     "fractal20220817_data": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": None},
