@@ -16,7 +16,7 @@ Package repository for Uha: Load and adjust Open X-Embodiement Datasets like Oct
 ```bash
 git clone [https://github.com/mbreuss/openrt_torch_dataloader](https://github.com/mbreuss/oxe_torch_dataloader.git)
 cd oxe_torch_dataloader
-conda create -n uha python=3.10
+conda create -n uha python=3.9
 conda activate uha
 pip install -e .
 ```

@@ -361,6 +361,8 @@ def make_dataset_from_rlds(
 
         return traj
 
+    if name == "bc_z":
+        name = name + ":0.1.0"
     builder = tfds.builder(name, data_dir=data_dir)
 
     # load or compute dataset statistics
