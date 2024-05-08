@@ -34,7 +34,6 @@ dependencies = [
     "tensorflow==2.15.0",
     "tensorflow-datasets==4.9.2",
     "tensorflow_graphics==2021.12.3",
-    "transformers>=4.34.1",
     "gcsfs",
     "tqdm>=4.60.0",
     "absl-py >= 0.12.0",
