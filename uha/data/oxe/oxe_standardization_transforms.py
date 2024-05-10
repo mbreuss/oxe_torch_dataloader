@@ -31,10 +31,10 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
             trajectory["action"][:, :6],
             binarize_gripper_actions(trajectory["action"][:, -1], 0.075, 0.065)[:, None],
         ],
-        axis=1,
+        axis=-1,
     )
     trajectory["observation"]["EEF_state"] = tf.stack([trajectory["observation"]["end_effector_pos"][:, :], trajectory["observation"]["end_effector_ori"][:, :]], axis=1)
-    trajectory["observation"]["gripper_state"] = trajectory["action_gripper_width"]
+    trajectory["observation"]["gripper_state"] = binarize_gripper_actions(trajectory["action_gripper_width"], 0.075, 0.065)
     return trajectory
 
 

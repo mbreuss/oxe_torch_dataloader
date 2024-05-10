@@ -20,6 +20,7 @@ def main(cfg: DictConfig):
         print("Top-level keys: ", sample.keys())
         # print("rgb_obs keys: ", sample["rgb_obs"].keys())
         # print("Task keys: ", sample["task"].keys())
+        print("actions: ", sample["actions"][:, 0, -1])
 
         # print("Top-level keys: ", sample.keys())
         # print("Task keys: ", sample["task"].keys())
