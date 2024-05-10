@@ -29,7 +29,7 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         [
             trajectory["action"][:, :6],
-            binarize_gripper_actions(trajectory["action"][:, -1])[:, None],
+            binarize_gripper_actions(trajectory["action"][:, -1], 0.075, 0.065)[:, None],
         ],
         axis=1,
     )
@@ -44,7 +44,7 @@ def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         [
             trajectory["action"][:, :6],
-            binarize_gripper_actions(trajectory["action"][:, -1])[:, None],
+            binarize_gripper_actions(trajectory["action"][:, -1], 0.95, 0.05)[:, None],
         ],
         axis=1,
     )
