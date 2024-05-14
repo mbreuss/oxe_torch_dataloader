@@ -1,4 +1,4 @@
-from uha.data.dataset import make_interleaved_dataset
+from uha.data.dataset import make_interleaved_dataset, make_single_dataset
 from uha.data.oxe import make_oxe_dataset_kwargs_and_weights
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
@@ -47,6 +47,32 @@ def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool):
         sample_weights,
         train=train,
         **interleaved_dataset_cfg,
+    )
+
+    return dataset
+
+def get_single_dataset_tensorflow(cfg: DictConfig, train: bool):
+    if not "action_proprio_normalization_type" in cfg:
+        action_proprio_normalization_type = NormalizationType("normal")
+    else:
+        assert cfg.action_proprio_normalization_type == "normal" or cfg.action_proprio_normalization_type == "bounds", "Error in Config, action_proprio_normalization_type should be \"normal\" or \"bounds\""
+        action_proprio_normalization_type = NormalizationType(cfg.action_proprio_normalization_type)
+    dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
+        cfg.DATA_NAME,
+        cfg.DATA_PATH,
+        action_proprio_normalization_type=action_proprio_normalization_type,
+        load_camera_views=cfg.load_camera_views,
+    )
+
+    # create instance of interleaved_dataset_cfg for transforms to work
+    interleaved_dataset_cfg = OmegaConf.to_object(cfg.interleaved_dataset_cfg)
+
+    dataset = make_single_dataset(
+        dataset_kwargs=dataset_kwargs_list[0],
+        train=train,
+        traj_transform_kwargs=interleaved_dataset_cfg["traj_transform_kwargs"],
+        frame_transform_kwargs=interleaved_dataset_cfg["frame_transform_kwargs"],
+        batch_size=1
     )
 
     return dataset

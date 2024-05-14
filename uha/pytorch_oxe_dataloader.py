@@ -68,6 +68,8 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
                 else:
                     sample["task"]["language_instruction"] = self._language_encoder("")
+
+            # print(sample["task"]["language_instruction"][0][0])
             
             # moved _key_remapping into transform_sample
             yield self.transform_sample(sample)
