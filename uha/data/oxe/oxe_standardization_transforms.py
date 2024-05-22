@@ -38,6 +38,19 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     return trajectory
 
 
+def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    trajectory["action"] = tf.concat(
+        [
+            trajectory["action_abs"][:, :6],
+            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.075, 0.065)[:, None],
+        ],
+        axis=-1,
+    )
+    trajectory["observation"]["EEF_state"] = tf.stack([trajectory["observation"]["end_effector_pos"][:, :], trajectory["observation"]["end_effector_ori"][:, :]], axis=1)
+    trajectory["observation"]["gripper_state"] = binarize_gripper_actions(trajectory["action_gripper_width"], 0.075, 0.065)
+    return trajectory
+
+
 def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # NOTE: this is not actually the official OXE copy of bridge, it is our own more up-to-date copy that you
     # can find at https://rail.eecs.berkeley.edu/datasets/bridge_release/data/tfds/
@@ -809,7 +822,12 @@ def gnm_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 
 OXE_STANDARDIZATION_TRANSFORMS = {
-    "kit_irl_real_kitchen": kit_irl_dataset_transform,
+    # "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_transform,
+    # "kit_irl_real_kitchen_des_joint": kit_irl_dataset_transform,
+    # "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_transform,
+    "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_abs_transform,
+    "kit_irl_real_kitchen_des_joint": kit_irl_dataset_abs_transform,
+    "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_abs_transform,
     "bridge_dataset": bridge_dataset_transform,
     "fractal20220817_data": rt1_dataset_transform,
     "kuka": kuka_dataset_transform,

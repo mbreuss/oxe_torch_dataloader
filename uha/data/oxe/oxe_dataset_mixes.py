@@ -154,7 +154,15 @@ OXE_FULL_MIX = [
 ]
 
 KIT_IRL_REAL_KITCHEN = [
-    ("kit_irl_real_kitchen", 1.0),
+    ("kit_irl_real_kitchen_delta_des_joint", 1.0),
+]
+
+KIT_IRL_REAL_KITCHEN_DES_JOINT = [
+    ("kit_irl_real_kitchen_des_joint", 1.0),
+]
+
+KIT_IRL_REAL_KITCHEN_DELTA_JOINT = [
+    ("kit_irl_real_kitchen_delta_joint", 1.0),
 ]
 
 OXE_NAMED_MIXES = {
@@ -165,4 +173,6 @@ OXE_NAMED_MIXES = {
     "oxe_magic_soup_lang_only": OXE_MAGIC_SOUP_LANG_ONLY,
     "small_test": SMALL_TEST_SET,
     "finetune_data": KIT_IRL_REAL_KITCHEN,
+    "finetune_data_des_joint": KIT_IRL_REAL_KITCHEN_DES_JOINT,
+    "finetune_data_delta_joint": KIT_IRL_REAL_KITCHEN_DELTA_JOINT,
 }

@@ -38,7 +38,7 @@ class ActionEncoding(IntEnum):
 
 
 OXE_DATASET_CONFIGS = {
-    "kit_irl_real_kitchen": {
+    "kit_irl_real_kitchen_delta_des_joint": {
         "image_obs_keys": {
             "primary": "image",
             "secondary": None,
@@ -46,6 +46,32 @@ OXE_DATASET_CONFIGS = {
         },
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         # "state_obs_keys": ["end_effector_pos", "end_effector_ori_quat", "joint_state"],
+        "state_obs_keys": ["end_effector_pos", "end_effector_ori", None],
+        "state_encoding": StateEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        "data_dir": "~/tensorflow_datasets",
+        # "shuffle": False,
+    },
+    "kit_irl_real_kitchen_des_joint": {
+        "image_obs_keys": {
+            "primary": "image",
+            "secondary": None,
+            "wrist": "wrist_image",
+        },
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "state_obs_keys": ["end_effector_pos", "end_effector_ori", None],
+        "state_encoding": StateEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        "data_dir": "~/tensorflow_datasets",
+        # "shuffle": False,
+    },
+    "kit_irl_real_kitchen_delta_joint": {
+        "image_obs_keys": {
+            "primary": "image",
+            "secondary": None,
+            "wrist": "wrist_image",
+        },
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "state_obs_keys": ["end_effector_pos", "end_effector_ori", None],
         "state_encoding": StateEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
