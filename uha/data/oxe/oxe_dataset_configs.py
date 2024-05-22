@@ -50,6 +50,7 @@ OXE_DATASET_CONFIGS = {
         "state_encoding": StateEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
         "data_dir": "~/tensorflow_datasets",
+        "language_key": ["language_instruction", "language_instruction_2", "language_instruction_3"]
         # "shuffle": False,
     },
     "kit_irl_real_kitchen_des_joint": {
@@ -63,6 +64,7 @@ OXE_DATASET_CONFIGS = {
         "state_encoding": StateEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
         "data_dir": "~/tensorflow_datasets",
+        "language_key": ["language_instruction", "language_instruction_2", "language_instruction_3"]
         # "shuffle": False,
     },
     "kit_irl_real_kitchen_delta_joint": {
@@ -76,6 +78,7 @@ OXE_DATASET_CONFIGS = {
         "state_encoding": StateEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
         "data_dir": "~/tensorflow_datasets",
+        "language_key": ["language_instruction", "language_instruction_2", "language_instruction_3"]
         # "shuffle": False,
     },
     "fractal20220817_data": {

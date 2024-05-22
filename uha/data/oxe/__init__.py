@@ -63,8 +63,10 @@ def make_oxe_dataset_kwargs(
     if not load_proprio:
         dataset_kwargs.pop("state_obs_keys")
 
-    if load_language:
+    if load_language and not "language_key" in dataset_kwargs:
         dataset_kwargs["language_key"] = "language_instruction"
+    elif not load_language and "language_key" in dataset_kwargs:
+        del dataset_kwargs["language_key"]
 
     dataset_kwargs[
         "action_proprio_normalization_type"

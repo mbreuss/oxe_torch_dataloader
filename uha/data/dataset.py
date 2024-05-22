@@ -288,7 +288,11 @@ def make_dataset_from_rlds(
     """
     REQUIRED_KEYS = {"observation", "action"}
     if language_key is not None:
-        REQUIRED_KEYS.add(language_key)
+        if not isinstance(language_key, list):
+            language_key = [language_key]
+            
+        for key in language_key:
+            REQUIRED_KEYS.add(key)
 
     def restructure(traj):
         # apply a standardization function, if provided
@@ -334,12 +338,13 @@ def make_dataset_from_rlds(
         # extracts `language_key` into the "task" dict
         task = {}
         if language_key is not None:
-            if traj[language_key].dtype != tf.string:
-                raise ValueError(
-                    f"Language key {language_key} has dtype {traj[language_key].dtype}, "
-                    "but it must be tf.string."
-                )
-            task["language_instruction"] = traj.pop(language_key)
+            for key in language_key:
+                if traj[key].dtype != tf.string:
+                    raise ValueError(
+                        f"Language key {key} has dtype {traj[key].dtype}, "
+                        "but it must be tf.string."
+                    )
+                task[key] = traj.pop(key) # key = "language_instruction"
 
         traj = {
             "observation": new_obs,

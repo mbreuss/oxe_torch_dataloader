@@ -63,6 +63,11 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 sample["current_index"] = torch.tensor(self._current_index).to(dtype=torch.int32)
                 self._current_index += 1
 
+                if "language_instruction_2" in sample["task"] and "language_instruction_3" in sample["task"]:
+                    rng = np.random.default_rng()
+                    roll = rng.integers(low=0, high=2)
+                    sample["task"]["language_instruction"] = [sample["task"]["language_instruction"], sample["task"]["language_instruction_2"], sample["task"]["language_instruction_3"]][roll]
+
                 if sample["task"]["pad_mask_dict"]["language_instruction"]:
                     sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
                     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
