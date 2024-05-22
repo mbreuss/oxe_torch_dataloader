@@ -822,12 +822,12 @@ def gnm_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 
 OXE_STANDARDIZATION_TRANSFORMS = {
-    # "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_transform,
-    # "kit_irl_real_kitchen_des_joint": kit_irl_dataset_transform,
-    # "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_transform,
-    "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_abs_transform,
-    "kit_irl_real_kitchen_des_joint": kit_irl_dataset_abs_transform,
-    "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_abs_transform,
+    "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_transform,
+    "kit_irl_real_kitchen_des_joint": kit_irl_dataset_transform,
+    "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_transform,
+    # "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_abs_transform,
+    # "kit_irl_real_kitchen_des_joint": kit_irl_dataset_abs_transform,
+    # "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_abs_transform,
     "bridge_dataset": bridge_dataset_transform,
     "fractal20220817_data": rt1_dataset_transform,
     "kuka": kuka_dataset_transform,
