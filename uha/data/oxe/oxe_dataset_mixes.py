@@ -165,6 +165,10 @@ KIT_IRL_REAL_KITCHEN_DELTA_JOINT = [
     ("kit_irl_real_kitchen_delta_joint", 1.0),
 ]
 
+KIT_IRL_REAL_KITCHEN_DELTA_JOINT_EULER = [
+    ("kit_irl_real_kitchen_delta_joint_euler", 1.0),
+]
+
 OXE_NAMED_MIXES = {
     "bridge": BRIDGE_MIX,
     "rtx": RT_X_MIX,
@@ -175,4 +179,5 @@ OXE_NAMED_MIXES = {
     "finetune_data": KIT_IRL_REAL_KITCHEN,
     "finetune_data_des_joint": KIT_IRL_REAL_KITCHEN_DES_JOINT,
     "finetune_data_delta_joint": KIT_IRL_REAL_KITCHEN_DELTA_JOINT,
+    "finetune_data_delta_joint_euler": KIT_IRL_REAL_KITCHEN_DELTA_JOINT_EULER,
 }
