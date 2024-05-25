@@ -23,6 +23,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         self._rlds_dataset = rlds_dataset
         self._current_index = 0
         self._is_train = train
+        self.rng = np.random.default_rng()
         self._language_encoder = language_encoder
         self._key_remapping = None
         self._combine_goal_obs = False
@@ -52,7 +53,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 # print(sample["observation"]["image_primary"].shape) => (window_size, height, width, channels), (2, 256, 256, 3)
                 sample["observation"]["image_primary"] = np.concatenate((sample["observation"]["image_primary"], [sample["task"]["image_primary"]]), axis=0)
                 sample["observation"]["image_wrist"] = np.concatenate((sample["observation"]["image_wrist"], [sample["task"]["image_wrist"]]), axis=0)
-            
+
             if self._adjust_type is not None:
                 dtype = hydra_get_object(self._adjust_type)
                 sample["observation"]["image_primary"] = torch.from_numpy(sample["observation"]["image_primary"]).to(dtype=dtype)
@@ -64,8 +65,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 self._current_index += 1
 
                 if "language_instruction_2" in sample["task"] and "language_instruction_3" in sample["task"]:
-                    rng = np.random.default_rng()
-                    roll = rng.integers(low=0, high=2)
+                    roll = self.rng.integers(low=0, high=2)
                     sample["task"]["language_instruction"] = [sample["task"]["language_instruction"], sample["task"]["language_instruction_2"], sample["task"]["language_instruction_3"]][roll]
 
                 if sample["task"]["pad_mask_dict"]["language_instruction"]:
