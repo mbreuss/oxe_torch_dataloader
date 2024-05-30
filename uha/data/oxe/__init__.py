@@ -15,13 +15,13 @@ def make_oxe_dataset_kwargs(
     data_dir: str,
     load_camera_views: Sequence[str] = ("primary",),
     load_depth: bool = False,
-    load_proprio: bool = False,
+    load_proprio: bool = True,
     load_language: bool = True,
     force_recompute_dataset_statistics: bool = False,
     action_proprio_normalization_type: NormalizationType = NormalizationType.NORMAL,
 ) -> Dict[str, Any]:
     """Generates dataset kwargs for a given dataset from Open X-Embodiment. The returned kwargs can be passed
-    directly into `octo.data.dataset.make_dataset_from_rlds`.
+    directly into `uha.data.dataset.make_dataset_from_rlds`.
 
     Args:
         name: Name of the dataset to load. See `oxe_dataset_configs.py` for available datasets.
@@ -100,7 +100,6 @@ def make_oxe_dataset_kwargs(
             dataset_kwargs["data_dir"] = os.path.expanduser("~") + dataset_kwargs["data_dir"][1:]
         data_dir = dataset_kwargs["data_dir"]
         del dataset_kwargs["data_dir"]
-
 
     if force_recompute_dataset_statistics:
         dataset_kwargs["force_recompute_dataset_statistics"] = True

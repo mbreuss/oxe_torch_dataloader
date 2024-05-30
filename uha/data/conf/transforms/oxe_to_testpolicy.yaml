@@ -5,22 +5,20 @@
 combine_goal_obs: False
 move_axis: True
 bytes_to_string: True
-add_empty_key: [] # ["rgb_obs"]
-adjust_type: torch.float32 # null # torch.float16
+add_empty_key: ["observation", "task"] # ["rgb_obs"]
+adjust_type: numpy.float32 # torch.float32 # null # torch.float16
 
 # transform_dict, from -> to, 2:2 currently mapped
 key_remapping:
   observation:
-    image_primary: "rgb_obs" # ["rgb_obs", "rgb_static"] # should be: (traj_len, window_size, height, width, channels), (16, 2, 256, 256, 3)
-    # image_wrist: ["rgb_obs", "rgb_gripper"] # should be: (traj_len, window_size, height, width, channels)
-    proprio: "robot_obs" # should be: (batch_size, window_size, action_dim)
-  
+    image_primary: ["observation", "image_primary"] # "rgb_obs" # should be: (traj_len, window_size, height, width, channels), (16, 2, 256, 256, 3)
+    image_wrist: ["observation", "image_wrist"] # should be: (traj_len, window_size, height, width, channels)
+    proprio: ["observation", "proprio"] # "robot_obs" # should be: (batch_size, window_size, action_dim)
+
   task:
-    image_primary: "rgb_goal" # ["rgb_goal", "rgb_static"]
-    # image_wrist: ["rgb_goal", "rgb_gripper"]
-    language_instruction: "lang_text"
+    image_primary: ["task", "image_primary"] # "rgb_goal"
+    image_wrist: ["task", "image_wrist"]
+    language_instruction: ["task", "language_instruction"]
     pad_mask_dict: "language_instruction_pad_mask"
 
-  action: "actions" # should be: (batch_size, window_size + future_action_window_size, action_dim)
-  
-  # current_index: "current_index"
+  action: "actions" # should be: (batch_size, window_size, future_action_window_size, action_dim)

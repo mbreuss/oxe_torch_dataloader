@@ -21,24 +21,14 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             language_encoder: nn.Module = NoEncoder(),
     ):
         self._rlds_dataset = rlds_dataset
-        self._current_index = 0
         self._is_train = train
-        self.rng = np.random.default_rng()
         self._language_encoder = language_encoder
-        self._key_remapping = None
-        self._combine_goal_obs = False
-        self._move_axis = True
-        self._add_empty_key = []
-        self._adjust_type = None
-        self._bytes_to_string = True
-
-        if transform_dict is not None:
-            self._key_remapping = transform_dict["key_remapping"]
-            self._combine_goal_obs = transform_dict["combine_goal_obs"]
-            self._move_axis = transform_dict["move_axis"]
-            self._add_empty_key = transform_dict["add_empty_key"]
-            self._adjust_type = transform_dict["adjust_type"]
-            self._bytes_to_string = transform_dict["bytes_to_string"]
+        self._key_remapping = transform_dict["key_remapping"] if transform_dict is not None and "key_remapping" in transform_dict else None
+        self._combine_goal_obs = transform_dict["combine_goal_obs"] if transform_dict is not None and "combine_goal_obs" in transform_dict else False
+        self._move_axis = transform_dict["move_axis"] if transform_dict is not None and "move_axis" in transform_dict else True
+        self._add_empty_key = transform_dict["add_empty_key"] if transform_dict is not None and "add_empty_key" in transform_dict else []
+        self._adjust_type = transform_dict["adjust_type"] if transform_dict is not None and "adjust_type" in transform_dict else None
+        self._bytes_to_string = transform_dict["bytes_to_string"] if transform_dict is not None and "bytes_to_string" in transform_dict else True
 
     def __iter__(self):
         for sample in self._rlds_dataset.as_numpy_iterator():
@@ -56,25 +46,20 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
 
             if self._adjust_type is not None:
                 dtype = hydra_get_object(self._adjust_type)
-                sample["observation"]["image_primary"] = torch.from_numpy(sample["observation"]["image_primary"]).to(dtype=dtype)
-                sample["observation"]["image_wrist"] = torch.from_numpy(sample["observation"]["image_wrist"]).to(dtype=dtype)
-                sample["action"] = torch.from_numpy(sample["action"]).to(dtype=dtype)
+                sample["observation"]["image_primary"] = sample["observation"]["image_primary"].astype(dtype)
+                sample["observation"]["image_wrist"] = sample["observation"]["image_wrist"].astype(dtype)
+                sample["task"]["image_primary"] = sample["task"]["image_primary"].astype(dtype)
+                sample["task"]["image_wrist"] = sample["task"]["image_wrist"].astype(dtype)
+                sample["action"] = sample["action"].astype(dtype)
 
             if self._bytes_to_string:
-                sample["current_index"] = torch.tensor(self._current_index).to(dtype=torch.int32)
-                self._current_index += 1
-
-                if "language_instruction_2" in sample["task"] and "language_instruction_3" in sample["task"]:
-                    roll = self.rng.integers(low=0, high=2)
-                    sample["task"]["language_instruction"] = [sample["task"]["language_instruction"], sample["task"]["language_instruction_2"], sample["task"]["language_instruction_3"]][roll]
-
                 if sample["task"]["pad_mask_dict"]["language_instruction"]:
                     sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
                     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
                 else:
                     sample["task"]["language_instruction"] = self._language_encoder("")
 
-            print(sample["task"]["language_instruction"][0][0])
+            # print(sample["task"]["language_instruction"][0][0])
             
             # moved _key_remapping into transform_sample
             yield self.transform_sample(sample)
