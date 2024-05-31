@@ -21,7 +21,7 @@ interleaved_dataset_cfg:
     goal_relabeling_strategy: "uniform"
     window_size: 2
     action_horizon: 2
-    subsample_length: 100
+    # subsample_length: 100
 
   frame_transform_kwargs:
       image_augment_kwargs:
