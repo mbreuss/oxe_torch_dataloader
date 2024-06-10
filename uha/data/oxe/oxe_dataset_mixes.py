@@ -5,6 +5,10 @@ BRIDGE_MIX = [
     ("bridge_dataset", 1.0),
 ]
 
+BRIDGE_MARCEL_MIX = [
+    ("bridge", 1.0),
+]
+
 RT_X_MIX = [
     ("fractal20220817_data", 0.54087122203),
     ("kuka", 0.8341046294),
@@ -208,6 +212,7 @@ KIT_IRL_REAL_KITCHEN_DELTA_JOINT_EULER = [
 ]
 
 OXE_NAMED_MIXES = {
+    "bridge_marcel": BRIDGE_MARCEL_MIX,
     "bridge": BRIDGE_MIX,
     "rtx": RT_X_MIX,
     "rtx_franka": RT_X_MIX + OXE_FRANKA_MIX,

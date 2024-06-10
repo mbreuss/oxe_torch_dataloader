@@ -135,6 +135,16 @@ def sample_match_keys_uniform(d: dict, key_template: str):
         return d[match_keys[0]]
 
 
+def filter_by_language_key(traj, *, language_key_template):
+    match_keys = [key for key in traj.keys() if fnmatch(key, language_key_template)]
+    if len(match_keys) == 0:
+        raise ValueError(f"No matching key found for {language_key_template}. Keys: {traj.keys()}")
+    
+    labels = tf.stack([traj[key] for key in match_keys], axis=0)
+    # if _any_ label in _any_ step is not empty, return True
+    return tf.math.reduce_any(labels != "")
+
+
 def pprint_data_mixture(
     dataset_kwargs_list: List[Dict[str, Any]], dataset_weights: List[int]
 ) -> None:
@@ -367,7 +377,7 @@ def normalize_action_and_proprio(
     raise ValueError(f"Unknown normalization type {normalization_type}")
 
 
-def binarize_gripper_actions(actions: tf.Tensor, open_boundary: float, close_boundary: float) -> tf.Tensor:
+def binarize_gripper_actions(actions: tf.Tensor, open_boundary: float = 0.95, close_boundary: float = 0.05) -> tf.Tensor:
     """Converts gripper actions from continous to binary values (0 and 1).
 
     We exploit that fact that most of the time, the gripper is fully open (near 1.0) or fully closed (near

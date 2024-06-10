@@ -24,6 +24,22 @@ from uha.data.utils.data_utils import (
 )
 
 
+def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    # marcel's?
+    trajectory["action"] = tf.concat(
+        [
+            trajectory["action"][:, :6],
+            binarize_gripper_actions(trajectory["action"][:, -1])[:, None],
+        ],
+        axis=1,
+    )
+    # TODO: confirm we need this for marcel's
+    trajectory = relabel_actions(trajectory)
+
+    trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    return trajectory
+
+
 def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         [
@@ -1007,6 +1023,7 @@ def mujoco_manip_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
 
 
 OXE_STANDARDIZATION_TRANSFORMS = {
+    "bridge": bridge_transform,
     "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_transform,
     "kit_irl_real_kitchen_des_joint": kit_irl_dataset_transform,
     "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_transform,

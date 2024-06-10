@@ -14,6 +14,9 @@ Target configuration:
 """
 from enum import IntEnum
 
+from uha.data.utils.data_utils import filter_by_language_key
+from uha.data.utils.spec import ModuleSpec
+
 
 class ProprioEncoding(IntEnum):
     """Defines supported proprio encoding schemes for different datasets."""
@@ -39,6 +42,25 @@ class ActionEncoding(IntEnum):
 
 
 OXE_DATASET_CONFIGS = {
+    "bridge": {
+        "image_obs_keys": {"primary": "image_0", "secondary": "image_1", "wrist": None},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        # for groundtruth
+        "language_key": "groundtruth*",
+        # for lupus
+        # "language_key": "language_instruction*",
+
+        # take the intersection of both labels as our dataset
+        "filter_functions": (ModuleSpec.create(
+            filter_by_language_key,
+            language_key_template="groundtruth*"
+        ), ModuleSpec.create(
+            filter_by_language_key,
+            language_key_template="language_instruction*"
+        ))
+    },
     "kit_irl_real_kitchen_delta_des_joint": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": "wrist_image"},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
