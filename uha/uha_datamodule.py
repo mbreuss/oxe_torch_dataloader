@@ -10,7 +10,7 @@ class UhaDataModule:
             self,
             datasets: DictConfig,
             batch_size: int = 32,
-            num_workers: int = 8,
+            num_workers: int = 0,
             pin_memory: bool = False,
             drop_last: bool = False,
             transforms: DictConfig = None,  # Replace with your default transforms
@@ -46,7 +46,7 @@ class UhaDataModuleNoValidationSet:
             self,
             datasets: DictConfig,
             batch_size: int = 32,
-            num_workers: int = 8,
+            num_workers: int = 0,
             pin_memory: bool = False,
             drop_last: bool = False,
             transforms: DictConfig = None,  # Replace with your default transforms
@@ -77,7 +77,7 @@ class UhaDataModuleEvaluation:
             self,
             datasets: DictConfig,
             batch_size: int = 32,
-            num_workers: int = 8,
+            num_workers: int = 0,
             pin_memory: bool = False,
             drop_last: bool = False,
             transforms: DictConfig = None,  # Replace with your default transforms
