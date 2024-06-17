@@ -256,6 +256,7 @@ def make_dataset_from_rlds(
     ignore_errors: bool = False,
     num_parallel_reads: int = tf.data.AUTOTUNE,
     num_parallel_calls: int = tf.data.AUTOTUNE,
+    dataset_size_limit: int = None,
 ) -> Tuple[dl.DLataset, dict]:
     """This function is responsible for loading a specific RLDS dataset from storage and getting it into a
     standardized format. Yields a dataset of trajectories. Does not include CPU-intensive operations.
@@ -379,6 +380,8 @@ def make_dataset_from_rlds(
     def is_nonzero_length(traj):
         return tf.shape(traj["action"])[0] > 0
 
+    if name == "bc_z":
+        name = name + ":0.1.0"
     builder = tfds.builder(name, data_dir=data_dir)
 
     # load or compute dataset statistics
@@ -421,10 +424,22 @@ def make_dataset_from_rlds(
         dataset_statistics["action"]["mask"] = np.array(action_normalization_mask)
 
     # construct the dataset
-    if "val" not in builder.info.splits:
-        split = "train[:95%]" if train else "train[95%:]"
+    if dataset_size_limit is not None and isinstance(dataset_size_limit, int):
+        if train and builder.info.splits["train"].num_examples >= (dataset_size_limit + int(dataset_size_limit * 0.05)):
+            split = "train[:" + str(dataset_size_limit) + "]"
+        elif train and "val" not in builder.info.splits:
+            split = "train[:95%]"
+        elif train:
+            split = "train"
+        elif not train and "val" not in builder.info.splits:
+            split = "train[95%:]"
+        else:
+            split = "val"
     else:
-        split = "train" if train else "val"
+        if "val" not in builder.info.splits:
+            split = "train[:95%]" if train else "train[95%:]"
+        else:
+            split = "train" if train else "val"
 
     dataset = dl.DLataset.from_rlds(
         builder, split=split, shuffle=shuffle, num_parallel_reads=num_parallel_reads

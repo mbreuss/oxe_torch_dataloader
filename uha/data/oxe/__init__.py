@@ -17,6 +17,7 @@ def make_oxe_dataset_kwargs(
     load_depth: bool = False,
     load_proprio: bool = True,
     load_language: bool = True,
+    dataset_size_limit: int = None,
     force_recompute_dataset_statistics: bool = False,
     action_proprio_normalization_type: NormalizationType = NormalizationType.NORMAL,
 ) -> Dict[str, Any]:
@@ -101,6 +102,9 @@ def make_oxe_dataset_kwargs(
         data_dir = dataset_kwargs["data_dir"]
         del dataset_kwargs["data_dir"]
 
+    if dataset_size_limit is not None and not dataset_size_limit in dataset_kwargs:
+        dataset_kwargs["dataset_size_limit"] = dataset_size_limit
+
     if force_recompute_dataset_statistics:
         dataset_kwargs["force_recompute_dataset_statistics"] = True
 
@@ -114,6 +118,7 @@ def make_oxe_dataset_kwargs_and_weights(
     load_depth: bool = False,
     load_proprio: bool = True,
     load_language: bool = True,
+    dataset_size_limit: int = None,
     force_recompute_dataset_statistics: bool = False,
     action_proprio_normalization_type: NormalizationType = NormalizationType.NORMAL,
 ) -> Tuple[Dict[str, Any], List[float]]:
@@ -157,6 +162,7 @@ def make_oxe_dataset_kwargs_and_weights(
                     load_depth,
                     load_proprio,
                     load_language,
+                    dataset_size_limit,
                     force_recompute_dataset_statistics,
                     action_proprio_normalization_type,
                 )

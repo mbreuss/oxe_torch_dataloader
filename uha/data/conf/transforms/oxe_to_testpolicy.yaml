@@ -22,3 +22,4 @@ key_remapping:
     pad_mask_dict: "language_instruction_pad_mask"
 
   action: "actions" # should be: (batch_size, window_size, future_action_window_size, action_dim)
+  # dataset_name: "dataset_name"

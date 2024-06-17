@@ -37,6 +37,7 @@ def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool):
         cfg.DATA_PATH,
         action_proprio_normalization_type=action_proprio_normalization_type,
         load_camera_views=cfg.load_camera_views,
+        dataset_size_limit=cfg.dataset_size_limit if "dataset_size_limit" in cfg else None,
     )
 
     # create instance of interleaved_dataset_cfg for transforms to work
