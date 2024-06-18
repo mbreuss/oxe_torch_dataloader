@@ -116,7 +116,7 @@ def make_oxe_dataset_kwargs_and_weights(
     data_dir: str,
     load_camera_views: Sequence[str] = ("primary",),
     load_depth: bool = False,
-    load_proprio: bool = True,
+    load_proprio: bool = False,
     load_language: bool = True,
     dataset_size_limit: int = None,
     force_recompute_dataset_statistics: bool = False,
