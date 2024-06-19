@@ -34,22 +34,22 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         for sample in self._rlds_dataset.as_numpy_iterator():
             if self._move_axis:
                 sample["observation"]["image_primary"] = np.moveaxis(sample["observation"]["image_primary"], 3, 1)
-                sample["observation"]["image_wrist"] = np.moveaxis(sample["observation"]["image_wrist"], 3, 1)
+                # sample["observation"]["image_wrist"] = np.moveaxis(sample["observation"]["image_wrist"], 3, 1)
                 sample["task"]["image_primary"] = np.moveaxis(sample["task"]["image_primary"], -1, 0)
-                sample["task"]["image_wrist"] = np.moveaxis(sample["task"]["image_wrist"], -1, 0)
+                # sample["task"]["image_wrist"] = np.moveaxis(sample["task"]["image_wrist"], -1, 0)
             
             if self._combine_goal_obs:
                 # print(sample["task"]["image_primary"].shape) => (height, width, channels), (256, 256, 3)
                 # print(sample["observation"]["image_primary"].shape) => (window_size, height, width, channels), (2, 256, 256, 3)
                 sample["observation"]["image_primary"] = np.concatenate((sample["observation"]["image_primary"], [sample["task"]["image_primary"]]), axis=0)
-                sample["observation"]["image_wrist"] = np.concatenate((sample["observation"]["image_wrist"], [sample["task"]["image_wrist"]]), axis=0)
+                # sample["observation"]["image_wrist"] = np.concatenate((sample["observation"]["image_wrist"], [sample["task"]["image_wrist"]]), axis=0)
 
             if self._adjust_type is not None:
                 dtype = hydra_get_object(self._adjust_type)
                 sample["observation"]["image_primary"] = sample["observation"]["image_primary"].astype(dtype)
-                sample["observation"]["image_wrist"] = sample["observation"]["image_wrist"].astype(dtype)
+                # sample["observation"]["image_wrist"] = sample["observation"]["image_wrist"].astype(dtype)
                 sample["task"]["image_primary"] = sample["task"]["image_primary"].astype(dtype)
-                sample["task"]["image_wrist"] = sample["task"]["image_wrist"].astype(dtype)
+                # sample["task"]["image_wrist"] = sample["task"]["image_wrist"].astype(dtype)
                 sample["action"] = sample["action"].astype(dtype)
 
             if self._bytes_to_string:
