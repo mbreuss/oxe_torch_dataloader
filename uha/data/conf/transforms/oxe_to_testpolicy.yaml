@@ -12,12 +12,12 @@ adjust_type: numpy.float32 # torch.float32 # null # torch.float16
 key_remapping:
   observation:
     image_primary: ["observation", "image_primary"] # "rgb_obs" # should be: (traj_len, window_size, height, width, channels), (16, 2, 256, 256, 3)
-    image_wrist: ["observation", "image_wrist"] # should be: (traj_len, window_size, height, width, channels)
-    proprio: ["observation", "proprio"] # "robot_obs" # should be: (batch_size, window_size, action_dim)
+    # image_wrist: ["observation", "image_wrist"] # should be: (traj_len, window_size, height, width, channels)
+    # proprio: ["observation", "proprio"] # "robot_obs" # should be: (batch_size, window_size, action_dim)
 
   task:
     image_primary: ["task", "image_primary"] # "rgb_goal"
-    image_wrist: ["task", "image_wrist"]
+    # image_wrist: ["task", "image_wrist"]
     language_instruction: ["task", "language_instruction"]
     pad_mask_dict: "language_instruction_pad_mask"
 

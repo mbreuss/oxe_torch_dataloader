@@ -11,11 +11,11 @@ import dlimp as dl
 
 tf.config.set_visible_devices([], "GPU")
 
-def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn.Module = None, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False):
+def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn.Module = None, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False, is_single_dataset=False):
     if language_encoder is not None:
-        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, language_encoder=language_encoder)
+        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, language_encoder=language_encoder, is_single_dataset=is_single_dataset)
     else:
-        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict)
+        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, is_single_dataset=is_single_dataset)
     
     return DataLoader(
         torch_itarable,
