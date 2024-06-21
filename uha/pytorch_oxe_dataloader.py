@@ -3,7 +3,6 @@ This example shows how to use the `octo.data` dataloader with PyTorch by wrappin
 dataloader. The config below also happens to be our exact pretraining config (except for the batch size and
 shuffle buffer size, which are reduced for demonstration purposes).
 """
-from array import array
 import numpy as np
 import torch
 import torch.nn as nn
@@ -23,6 +22,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             language_encoder: nn.Module = NoEncoder(),
             is_single_dataset: bool = False,
     ):
+        super(TorchRLDSIterableDataset).__init__()
         self._rlds_dataset = rlds_dataset
         self._is_train = train
         self._language_encoder = language_encoder
@@ -35,25 +35,14 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         self._bytes_to_string = transform_dict["bytes_to_string"] if transform_dict is not None and "bytes_to_string" in transform_dict else True
 
     def __iter__(self):
-        for sample in self._rlds_dataset.iterator(): #.as_numpy_iterator():
+        # for sample in self._rlds_dataset.iterator():
+        for sample in self._rlds_dataset.as_numpy_iterator():
             sample = self.transform_sample(sample)
             # moved _key_remapping into transform_sample
             yield self.remap_sample(sample)
 
     def __len__(self):
-        lengths = np.array(
-            [
-                stats["num_transitions"]
-                for stats in self._rlds_dataset.dataset_statistics
-            ]
-        )
-        if hasattr(self._rlds_dataset, "sample_weights"):
-            lengths = np.array(self._rlds_dataset.sample_weights) * lengths
-        total_len = lengths.sum()
-        if self._is_train:
-            return int(0.95 * total_len)
-        else:
-            return int(0.05 * total_len)
+        return self._rlds_dataset.dataset_len
 
     def transform_sample(self, sample):
         if self._move_axis:

@@ -16,7 +16,7 @@ def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn
         torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, language_encoder=language_encoder, is_single_dataset=is_single_dataset)
     else:
         torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, is_single_dataset=is_single_dataset)
-    
+
     return DataLoader(
         torch_itarable,
         batch_size=batch_size,
