@@ -35,8 +35,8 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         self._bytes_to_string = transform_dict["bytes_to_string"] if transform_dict is not None and "bytes_to_string" in transform_dict else True
 
     def __iter__(self):
-        # for sample in self._rlds_dataset.iterator():
-        for sample in self._rlds_dataset.as_numpy_iterator():
+        for sample in self._rlds_dataset.iterator():
+        # for sample in self._rlds_dataset.as_numpy_iterator():
             sample = self.transform_sample(sample)
             # moved _key_remapping into transform_sample
             yield self.remap_sample(sample)

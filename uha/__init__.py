@@ -11,19 +11,29 @@ import dlimp as dl
 
 tf.config.set_visible_devices([], "GPU")
 
-def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn.Module = None, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False, is_single_dataset=False):
+def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn.Module = None, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False, is_single_dataset=False, main_process=False):
     if language_encoder is not None:
         torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, language_encoder=language_encoder, is_single_dataset=is_single_dataset)
     else:
         torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, is_single_dataset=is_single_dataset)
 
-    return DataLoader(
-        torch_itarable,
-        batch_size=batch_size,
-        num_workers=num_workers,  # important to keep this to 0 so PyTorch does not mess with the parallelism
-        pin_memory=pin_memory,
-        drop_last=drop_last,
-    )
+    if main_process:
+        return DataLoader(
+            torch_itarable,
+            batch_size=batch_size,
+            num_workers=2, # 2 for prefetching, dont increase beyond 2, else we get ddos timeout from gsresearch
+            pin_memory=pin_memory,
+            drop_last=drop_last,
+            prefetch_factor=50,
+        )
+    else:
+        return DataLoader(
+            torch_itarable,
+            batch_size=batch_size,
+            num_workers=0, # important to keep this to 0 so PyTorch does not mess with the parallelism
+            pin_memory=pin_memory,
+            drop_last=drop_last,
+        )
 
 
 def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool):
