@@ -45,19 +45,17 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         return self._rlds_dataset.dataset_len
 
     def transform_sample(self, sample):
+        dicts = ["observation", "task", "future_obs"]
         if self._move_axis:
-            if "image_primary" in sample["observation"]:
-                sample["observation"]["image_primary"] = np.moveaxis(sample["observation"]["image_primary"], -1, -3)
-            if "image_secondary" in sample["observation"]:
-                sample["observation"]["image_secondary"] = np.moveaxis(sample["observation"]["image_secondary"], -1, -3)
-            if "image_wrist" in sample["observation"]:
-                sample["observation"]["image_wrist"] = np.moveaxis(sample["observation"]["image_wrist"], -1, -3)
-            if "image_primary" in sample["task"]:
-                sample["task"]["image_primary"] = np.moveaxis(sample["task"]["image_primary"], -1, -3)
-            if "image_secondary" in sample["task"]:
-                sample["task"]["image_secondary"] = np.moveaxis(sample["task"]["image_secondary"], -1, -3)
-            if "image_wrist" in sample["task"]:
-                sample["task"]["image_wrist"] = np.moveaxis(sample["task"]["image_wrist"], -1, -3)
+            for key in dicts:
+                if not key in sample:
+                    continue
+                if "image_primary" in sample[key]:
+                    sample[key]["image_primary"] = np.moveaxis(sample[key]["image_primary"], -1, -3)
+                if "image_secondary" in sample[key]:
+                    sample[key]["image_secondary"] = np.moveaxis(sample[key]["image_secondary"], -1, -3)
+                if "image_wrist" in sample[key]:
+                    sample[key]["image_wrist"] = np.moveaxis(sample[key]["image_wrist"], -1, -3)
             
         # if self._combine_goal_obs:
         #     # print(sample["task"]["image_primary"].shape) => (height, width, channels), (256, 256, 3)
@@ -67,18 +65,15 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
 
         if self._adjust_type is not None:
             dtype = hydra_get_object(self._adjust_type)
-            if "image_primary" in sample["observation"]:
-                sample["observation"]["image_primary"] = sample["observation"]["image_primary"].astype(dtype)
-            if "image_secondary" in sample["observation"]:
-                sample["observation"]["image_secondary"] = sample["observation"]["image_secondary"].astype(dtype)
-            if "image_wrist" in sample["observation"]:
-                sample["observation"]["image_wrist"] = sample["observation"]["image_wrist"].astype(dtype)
-            if "image_primary" in sample["task"]:
-                sample["task"]["image_primary"] = sample["task"]["image_primary"].astype(dtype)
-            if "image_secondary" in sample["task"]:
-                sample["task"]["image_secondary"] = sample["task"]["image_secondary"].astype(dtype)
-            if "image_wrist" in sample["task"]:
-                sample["task"]["image_wrist"] = sample["task"]["image_wrist"].astype(dtype)
+            for key in dicts:
+                if not key in sample:
+                    continue
+                if "image_primary" in sample[key]:
+                    sample[key]["image_primary"] = sample[key]["image_primary"].astype(dtype)
+                if "image_secondary" in sample[key]:
+                    sample[key]["image_secondary"] = sample[key]["image_secondary"].astype(dtype)
+                if "image_wrist" in sample[key]:
+                    sample[key]["image_wrist"] = sample[key]["image_wrist"].astype(dtype)
             sample["action"] = sample["action"].astype(dtype)
 
         if self._bytes_to_string:
@@ -113,6 +108,8 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             if len(self._add_empty_key) != 0:
                 for key in self._add_empty_key:
                     sample[key] = {}
+            if "dataset_name" in sample:
+                del sample["dataset_name"]
             return sample
         else:
             transformed_sample = {}

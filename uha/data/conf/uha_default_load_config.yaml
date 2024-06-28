@@ -4,7 +4,7 @@ _recursive_: false
 # Observation keys:  dict_keys(['image_primary', 'image_wrist', 'proprio', 'timestep', 'pad_mask_dict', 'pad_mask'])
 # Task keys:  dict_keys(['language_instruction', 'pad_mask_dict', 'image_primary', 'image_wrist', 'proprio', 'timestep'])
 defaults:
-  - transforms: oxe_to_testpolicy # oxe_to_calvin
+  - transforms: oxe_no_remapping # oxe_to_calvin
   - language_encoders: clip # clip # no_encoder
 
 DATA_NAME: fraktal # rtx # oxe_magic_soup # oxe_magic_soup_lang_only # small_test # finetune_data
@@ -19,8 +19,10 @@ interleaved_dataset_cfg:
   # batch_size: None
   balance_weights: True
   traj_transform_kwargs:
-    goal_relabeling_strategy: "uniform"
-    window_size: 2
+    goal_relabeling_strategy: "uniform_and_future" # "uniform"
+    goal_relabeling_kwargs:
+        frame_diff: 3
+    window_size: 1
     action_horizon: 2
     skip_unlabeled: True
     # task_augment_strategy: "rephrase_lupus"

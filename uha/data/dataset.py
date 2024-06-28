@@ -199,6 +199,9 @@ def apply_frame_transforms(
         frame["task"] = fn(frame["task"])
         # observation is chunked -- apply fn along first axis
         frame["observation"] = dl.vmap(fn)(frame["observation"])
+
+        if "future_obs" in frame:
+            frame["future_obs"] = fn(frame["future_obs"])
         return frame
 
     # decode + resize images (and depth images)
