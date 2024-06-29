@@ -66,7 +66,7 @@ def uniform_and_future(traj: dict, max_goal_distance: Optional[int] = None, fram
     traj["task"] = tree_merge(traj["task"], goal)
     
 
-    future_idxs = tf.range(traj_len) + frame_diff
+    future_idxs = tf.range(traj_len)[:, None] + tf.range(frame_diff, 2*frame_diff+1, frame_diff)
     future_idxs = tf.minimum(future_idxs, traj_len - 1)
     traj["future_obs"] = tf.nest.map_structure(lambda x: tf.gather(x, future_idxs), traj["observation"])
 

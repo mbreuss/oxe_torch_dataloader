@@ -163,6 +163,7 @@ def apply_frame_transforms(
     train: bool,
     image_augment_kwargs: Union[dict, Mapping[str, dict]] = {},
     resize_size: Union[Tuple[int, int], Mapping[str, Tuple[int, int]]] = {},
+    resize_size_future_obs: Union[Tuple[int, int], Mapping[str, Tuple[int, int]]] = {},
     depth_resize_size: Union[Tuple[int, int], Mapping[str, Tuple[int, int]]] = {},
     image_dropout_prob: float = 0.0,
     image_dropout_keep_key: Optional[str] = None,
@@ -183,6 +184,10 @@ def apply_frame_transforms(
             this size. If a dict of tuples is provided, then key "k" will be used for "image_{k}" (names
             determined by `image_obs_keys` in `make_dataset_from_rlds`). Resizing will be skipped for missing
             keys (so pass an empty dict to skip resizing for all images).
+        resize_size_future_obs (Tuple[int, int]|Mapping[str, Tuple[int, int]]): If provided, images will be resized to
+            this size. If a dict of tuples is provided, then key "k" will be used for "image_{k}" (names
+            determined by `image_obs_keys` in `make_dataset_from_rlds`). Resizing will be skipped for missing
+            keys (so pass an empty dict to skip resizing for all images).
         depth_resize_size (Tuple[int, int]|Mapping[str, Tuple[int, int]]): Same as resize_size, but for depth
             images.
         image_dropout_prob (float): Probability of dropping out images, applied to each image key
@@ -200,8 +205,11 @@ def apply_frame_transforms(
         # observation is chunked -- apply fn along first axis
         frame["observation"] = dl.vmap(fn)(frame["observation"])
 
+        return frame
+    
+    def apply_obs_transform_future(fn: Callable[[dict], dict], frame: dict) -> dict:
         if "future_obs" in frame:
-            frame["future_obs"] = fn(frame["future_obs"])
+            frame["future_obs"] = dl.vmap(fn)(frame["future_obs"])
         return frame
 
     # decode + resize images (and depth images)
@@ -211,6 +219,17 @@ def apply_frame_transforms(
             partial(
                 obs_transforms.decode_and_resize,
                 resize_size=resize_size,
+                depth_resize_size=depth_resize_size,
+            ),
+        ),
+        num_parallel_calls,
+    )
+    dataset = dataset.frame_map(
+        partial(
+            apply_obs_transform_future,
+            partial(
+                obs_transforms.decode_and_resize,
+                resize_size=resize_size_future_obs,
                 depth_resize_size=depth_resize_size,
             ),
         ),
