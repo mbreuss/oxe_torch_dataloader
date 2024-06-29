@@ -59,6 +59,10 @@ interleaved_dataset_cfg:
       resize_size:
           primary: [256, 256]
           # wrist: [128, 128]
+      resize_size_future_obs:
+          primary: [112, 112]
+          # secondary: [112, 112]
+          # wrist: [128, 128]
       num_parallel_calls: 200
   traj_transform_threads: 48
   traj_read_threads: 48
