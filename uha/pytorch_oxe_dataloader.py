@@ -9,6 +9,7 @@ import torch.nn as nn
 from uha.data.utils.data_utils import hydra_get_object
 from uha.data.language_encoders.no_encoder import NoEncoder
 from dlimp.dataset import DLataset
+from torchvision.transforms.functional import convert_image_dtype
 
 
 class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
@@ -65,15 +66,15 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
 
         if self._adjust_type is not None:
             dtype = hydra_get_object(self._adjust_type)
-            for key in dicts:
-                if not key in sample:
-                    continue
-                if "image_primary" in sample[key]:
-                    sample[key]["image_primary"] = sample[key]["image_primary"].astype(dtype)
-                if "image_secondary" in sample[key]:
-                    sample[key]["image_secondary"] = sample[key]["image_secondary"].astype(dtype)
-                if "image_wrist" in sample[key]:
-                    sample[key]["image_wrist"] = sample[key]["image_wrist"].astype(dtype)
+            # for key in dicts:
+            #     if not key in sample:
+            #         continue
+            #     if "image_primary" in sample[key]:
+            #         sample[key]["image_primary"] = sample[key]["image_primary"].astype(dtype)
+            #     if "image_secondary" in sample[key]:
+            #         sample[key]["image_secondary"] = sample[key]["image_secondary"].astype(dtype)
+            #     if "image_wrist" in sample[key]:
+            #         sample[key]["image_wrist"] = sample[key]["image_wrist"].astype(dtype)
             sample["action"] = sample["action"].astype(dtype)
 
         if self._bytes_to_string:
