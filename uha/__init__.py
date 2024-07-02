@@ -50,6 +50,9 @@ def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool):
         dataset_size_limit=cfg.dataset_size_limit if "dataset_size_limit" in cfg else None,
     )
 
+    if not train:
+        cfg.interleaved_dataset_cfg.shuffle_buffer_size = int(cfg.interleaved_dataset_cfg.shuffle_buffer_size / 100)
+
     # create instance of interleaved_dataset_cfg for transforms to work
     interleaved_dataset_cfg = OmegaConf.to_object(cfg.interleaved_dataset_cfg)
 
