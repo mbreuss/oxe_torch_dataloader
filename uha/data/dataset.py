@@ -515,6 +515,8 @@ def make_single_dataset(
     dataset = apply_trajectory_transforms(dataset, **traj_transform_kwargs, train=train)
     dataset = apply_frame_transforms(dataset, **frame_transform_kwargs, train=train)
 
+    dataset_len = dataset_statistics["num_transitions"]
+
     # sequential batch (parallel batch seems to use much more memory)
     if batch_size is not None:
         dataset = dataset.batch(batch_size)
@@ -524,6 +526,7 @@ def make_single_dataset(
 
     # save for later
     dataset.dataset_statistics = dataset_statistics
+    dataset.dataset_len = dataset_len
     return dataset
 
 

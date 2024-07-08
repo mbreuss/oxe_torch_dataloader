@@ -22,12 +22,16 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             transform_dict = None,
             language_encoder: nn.Module = NoEncoder(),
             is_single_dataset: bool = False,
+            batch_size: int = 128
     ):
         super(TorchRLDSIterableDataset).__init__()
         self._rlds_dataset = rlds_dataset
         self._is_train = train
         self._language_encoder = language_encoder
         self._is_single_dataset = is_single_dataset
+        self._batch_size = batch_size
+        self._sub_batch_size = 0
+        self._sub_batch = None
         self._key_remapping = transform_dict["key_remapping"] if transform_dict is not None and "key_remapping" in transform_dict else None
         self._combine_goal_obs = transform_dict["combine_goal_obs"] if transform_dict is not None and "combine_goal_obs" in transform_dict else False
         self._move_axis = transform_dict["move_axis"] if transform_dict is not None and "move_axis" in transform_dict else True
@@ -38,12 +42,50 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
     def __iter__(self):
         for sample in self._rlds_dataset.iterator():
         # for sample in self._rlds_dataset.as_numpy_iterator():
-            sample = self.transform_sample(sample)
-            # moved _key_remapping into transform_sample
-            yield self.remap_sample(sample)
+            if self._is_single_dataset: # reshape data to batch
+                current_length = sample["action"].shape[0]
+                if self._sub_batch_size + current_length < self._batch_size:
+                    self._sub_batch_size += current_length
+                    if self._sub_batch is None:
+                        self._sub_batch = sample
+                    else:
+                        for key in sample:
+                            self._sub_batch[key] = self.add_key(sample[key], self._sub_batch[key])
+                else:
+                    limit = self._batch_size - self._sub_batch_size
+                    if self._sub_batch is None:
+                        self._sub_batch = self.limit_size(sample, limit)
+                    else:
+                        for key in sample:
+                            self._sub_batch[key] = self.add_key(sample[key], self._sub_batch[key], limit)
+                    self._sub_batch_size = 0
+                    yield self.remap_sample(self.transform_sample(self._sub_batch))
+                    self._sub_batch = None
+                            
+            else:
+                sample = self.transform_sample(sample)
+                # moved _key_remapping into transform_sample
+                yield self.remap_sample(sample)
 
     def __len__(self):
         return self._rlds_dataset.dataset_len
+    
+    def add_key(self, _sample, sub_batch, limit=None):
+        if isinstance(_sample, np.ndarray) and limit is None:
+            return np.concatenate([sub_batch, _sample], axis=0)
+        elif isinstance(_sample, np.ndarray):
+            return np.concatenate([sub_batch, _sample[:limit]], axis=0)
+        else:
+            for key in _sample:
+                sub_batch[key] = self.add_key(_sample[key], sub_batch[key], limit)
+            return sub_batch
+
+    def limit_size(self, sample, limit):
+        if isinstance(sample, np.ndarray):
+            return sample[:limit]
+        else:
+            for key in sample:
+                sample[key] = self.limit_size(sample[key], limit)
 
     def transform_sample(self, sample):
         dicts = ["observation", "task", "future_obs"]
@@ -79,21 +121,16 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
 
         if self._bytes_to_string:
             if self._is_single_dataset:
-                if sample["task"]["pad_mask_dict"]["language_instruction"][0][0]:
-                    sample["task"]["language_instruction"] = sample["task"]["language_instruction"][0][0].decode("utf-8")
-                    sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
-                else:
-                    sample["task"]["language_instruction"] = self._language_encoder("")
-                # print(sample["task"]["language_instruction"][0][0])
-                # language_instruction = np.empty_like(sample["task"]["language_instruction"], dtype=sample["action"].dtype)
-                # for i in range(len(sample["task"]["pad_mask_dict"]["language_instruction"])):
-                #     for j in range(len(sample["task"]["pad_mask_dict"]["language_instruction"][i])):
-                #         if sample["task"]["pad_mask_dict"]["language_instruction"][i][j]:
-                #             # sample["task"]["language_instruction"][i][j] = sample["task"]["language_instruction"][i][j].decode("utf-8")
-                #             language_instruction[i][j] = self._language_encoder(sample["task"]["language_instruction"][i][j].decode("utf-8"))
-                #         else:
-                #             language_instruction[i][j] = self._language_encoder("")
-                # sample["task"]["language_instruction"] = language_instruction
+                # if sample["task"]["pad_mask_dict"]["language_instruction"][0][0]:
+                #     sample["task"]["language_instruction"] = sample["task"]["language_instruction"][0][0].decode("utf-8")
+                #     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
+                # else:
+                #     sample["task"]["language_instruction"] = self._language_encoder("")
+                # sample["task"]["language_instruction"] = self._vectorized_lang_encoder(sample["task"]["language_instruction"])
+                sample["task"]["language_instruction"] = self._language_encoder(
+                    [s.decode("utf-8") for s in sample["task"]["language_instruction"]]
+                )
+                    
             else:
                 # print(sample["task"]["language_instruction"])
                 if sample["task"]["pad_mask_dict"]["language_instruction"]:

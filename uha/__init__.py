@@ -25,6 +25,7 @@ def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn
             pin_memory=pin_memory,
             drop_last=drop_last,
             prefetch_factor=25,
+            shuffle=not is_single_dataset,
         )
     else:
         return DataLoader(
@@ -33,6 +34,7 @@ def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn
             num_workers=0, # important to keep this to 0 so PyTorch does not mess with the parallelism
             pin_memory=pin_memory,
             drop_last=drop_last,
+            shuffle=not is_single_dataset,
         )
 
 
@@ -81,6 +83,9 @@ def get_single_dataset_tensorflow(cfg: DictConfig, train: bool):
     # create instance of interleaved_dataset_cfg for transforms to work
     interleaved_dataset_cfg = OmegaConf.to_object(cfg.interleaved_dataset_cfg)
 
+    print("########################################")
+    print("constructing single val dataset:", dataset_kwargs_list[0]["name"])
+    print("########################################")
     dataset = make_single_dataset(
         dataset_kwargs=dataset_kwargs_list[0],
         train=train,

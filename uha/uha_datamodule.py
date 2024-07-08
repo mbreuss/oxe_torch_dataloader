@@ -103,7 +103,7 @@ class UhaDataModuleSeqValidationSet:
 
     def create_val_dataloader(self, main_process=False):
         return uha.make_pytorch_oxe_iterable_dataset(dataset=self.val_datasets, train=False, batch_size=1, language_encoder=self.language_encoders,
-                                                     transform_dict=self.transforms, num_workers=self.num_workers, pin_memory=self.pin_memory, drop_last=self.drop_last, is_single_dataset=True)
+                                                     transform_dict=self.transforms, num_workers=self.num_workers, pin_memory=self.pin_memory, drop_last=self.drop_last)
 
     def get_dataset_statistics(self):
         return {"train_dataset": self.train_datasets.dataset_statistics, "val_dataset": self.val_datasets.dataset_statistics}
@@ -134,7 +134,10 @@ class UhaDataModuleEvaluation:
 
     def create_train_dataloader(self, main_process=False):
         return uha.make_pytorch_oxe_iterable_dataset(dataset=self.train_datasets, train=False, batch_size=self.batch_size, language_encoder=self.language_encoders,
-                                                     transform_dict=self.transforms, num_workers=self.num_workers, pin_memory=self.pin_memory, drop_last=self.drop_last)
+                                                     transform_dict=self.transforms, num_workers=self.num_workers, pin_memory=self.pin_memory, drop_last=self.drop_last, is_single_dataset=True)
+    
+    def create_val_dataloader(self, main_process=False):
+        return None
     
     def get_dataset_statistics(self):
         return {"train_dataset": self.train_datasets.dataset_statistics, "val_dataset": None}

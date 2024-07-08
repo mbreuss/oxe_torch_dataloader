@@ -9,14 +9,14 @@ from omegaconf import DictConfig, OmegaConf
 @hydra.main(config_path="../uha/data/conf", config_name="uha_default_load_config")
 def main(cfg: DictConfig):
     # load Training Dataset from TensorflowDatasets
-    dataset = get_octo_dataset_tensorflow(cfg, train=True)
-    # dataset = get_single_dataset_tensorflow(cfg, train=True)
-    is_single_dataset = False
+    # dataset = get_octo_dataset_tensorflow(cfg, train=True)
+    dataset = get_single_dataset_tensorflow(cfg, train=True).repeat().unbatch()
+    is_single_dataset = True
     batch_size = 512
     cfg_transforms = OmegaConf.to_object(cfg.transforms)
     language_encoder = hydra.utils.instantiate(cfg.language_encoders)
     # create Pytorch Train Dataset
-    dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
+    dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=False)
     # dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512)
     for sample in dataloader:
     # for i, sample in tqdm.tqdm(enumerate(dataloader)):
