@@ -25,7 +25,7 @@ def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn
             pin_memory=pin_memory,
             drop_last=drop_last,
             prefetch_factor=25,
-            shuffle=not is_single_dataset,
+            shuffle=False if is_single_dataset else None,
         )
     else:
         return DataLoader(
@@ -34,7 +34,7 @@ def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn
             num_workers=0, # important to keep this to 0 so PyTorch does not mess with the parallelism
             pin_memory=pin_memory,
             drop_last=drop_last,
-            shuffle=not is_single_dataset,
+            shuffle=False if is_single_dataset else None,
         )
 
 
