@@ -2,7 +2,6 @@
 # Observation keys:  dict_keys(['image_primary', 'image_wrist', 'proprio', 'timestep', 'pad_mask_dict', 'pad_mask'])
 # Task keys:  dict_keys(['language_instruction', 'pad_mask_dict', 'image_primary', 'image_wrist', 'proprio', 'timestep'])
 
-combine_goal_obs: True
 move_axis: True
 bytes_to_string: True
 add_empty_key: ["depth_obs", "rgb_obs"]
