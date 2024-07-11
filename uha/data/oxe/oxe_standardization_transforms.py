@@ -78,6 +78,24 @@ def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     return trajectory
 
 
+def droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    trajectory["action"] = tf.concat(
+        [
+            trajectory["action_dict"]["joint_position"][:, :7],
+            binarize_gripper_actions(trajectory["action_dict"]["gripper_position"][:, -1], 0.95, 0.05)[:, None],
+        ],
+        axis=-1,
+    )
+    trajectory["observation"]["proprio"] = tf.concat(
+        (
+            trajectory["observation"]["joint_position"][:, :],
+            binarize_gripper_actions(trajectory["observation"]["gripper_position"][:, -1], 0.95, 0.05)[:, None],
+        ),
+        axis=1
+    )
+    return trajectory
+
+
 def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # NOTE: this is not actually the official OXE copy of bridge, it is our own more up-to-date copy that you
     # can find at https://rail.eecs.berkeley.edu/datasets/bridge_release/data/tfds/
@@ -1029,11 +1047,13 @@ OXE_STANDARDIZATION_TRANSFORMS = {
     "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_transform,
     "kit_irl_real_kitchen_delta_joint_euler": kit_irl_dataset_transform,
     "kit_irl_real_kitchen_delta_des_joint_euler": kit_irl_dataset_transform,
+    "kit_irl_real_kitchen_vis_delta_des_joint_euler": kit_irl_dataset_transform,
     # "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_abs_transform,
     # "kit_irl_real_kitchen_des_joint": kit_irl_dataset_abs_transform,
     # "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_abs_transform,
     # "kit_irl_real_kitchen_delta_joint_euler": kit_irl_dataset_abs_transform,
     # "kit_irl_real_kitchen_delta_des_joint_euler": kit_irl_dataset_abs_transform,
+    "droid": droid_dataset_transform,
     "bridge_dataset": bridge_dataset_transform,
     "fractal20220817_data": rt1_dataset_transform,
     "kuka": kuka_dataset_transform,
@@ -1086,10 +1106,10 @@ OXE_STANDARDIZATION_TRANSFORMS = {
     "gnm_dataset": gnm_dataset_transform,
     "aloha_static_dataset": aloha_dataset_transform,
     "aloha_dagger_dataset": aloha_dataset_transform,
-    "aloha_mobile_dataset": aloha_dataset_transform,
+    "aloha_mobile": aloha_dataset_transform,
     "fmb_dataset": fmb_dataset_transform,
     "dobbe": dobbe_dataset_transform,
-    "roboset": roboset_dataset_transform,
+    "robo_set": roboset_dataset_transform,
     "rh20t": rh20t_dataset_transform,
     "mujoco_manip": mujoco_manip_dataset_transform,
 }

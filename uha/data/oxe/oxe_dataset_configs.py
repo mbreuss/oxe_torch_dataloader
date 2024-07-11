@@ -106,6 +106,22 @@ OXE_DATASET_CONFIGS = {
         "language_key": "language_instruction*",
         # "shuffle": False,
     },
+    "kit_irl_real_kitchen_vis_delta_des_joint_euler": {
+        "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": None},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        "data_dir": "~/tensorflow_datasets",
+        # "shuffle": False,
+    },
+    "droid": {
+        "image_obs_keys": {"primary": "exterior_image_1_left", "secondary": "exterior_image_2_left", "wrist": "wrist_image_left"},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.JOINT,
+        "action_encoding": ActionEncoding.JOINT_POS,
+        "language_key": "language_instruction*",
+        # "shuffle": False,
+    },
     "fractal20220817_data": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": None},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
@@ -522,7 +538,7 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.JOINT_BIMANUAL,
         "action_encoding": ActionEncoding.JOINT_POS_BIMANUAL,
     },
-    "aloha_mobile_dataset": {
+    "aloha_mobile": {
         "image_obs_keys": {
             "primary": "cam_high",
             "secondary": None,
@@ -552,7 +568,7 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
     },
-    "roboset": {
+    "robo_set": {
         "image_obs_keys": {
             "primary": "image_left",
             "secondary": "image_right",

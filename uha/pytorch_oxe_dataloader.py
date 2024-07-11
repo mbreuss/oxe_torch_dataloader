@@ -49,7 +49,23 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 yield self.remap_sample(sample)
 
     def __len__(self):
-        return self._rlds_dataset.dataset_len
+        if hasattr(self._rlds_dataset, "dataset_len"):
+            # print("dataset_len called", self._rlds_dataset.dataset_len)
+            return self._rlds_dataset.dataset_len
+        lengths = np.array(
+            [
+                stats["num_transitions"]
+                for stats in self._rlds_dataset.dataset_statistics
+            ]
+        )
+        if hasattr(self._rlds_dataset, "sample_weights"):
+            lengths = np.array(self._rlds_dataset.sample_weights) * lengths
+        total_len = lengths.sum()
+        # print("num_transitions called", total_len)
+        if self._is_train:
+            return int(0.95 * total_len)
+        else:
+            return int(0.05 * total_len)
 
     def limit_size(self, sample, sub_batch, index):
         if isinstance(sample, np.ndarray):

@@ -14,6 +14,15 @@ SIMPLER_ENV = [
   ("fractal20220817_data", 0.6),
 ]
 
+JOINT_MIX = [
+  ("droid", 0.54087122203),
+  ("robo_set", 1.0),
+  ("aloha_mobile", 1.0),
+  ("berkeley_mvp_converted_externally_to_rlds", 1.0),
+  ("berkeley_rpt_converted_externally_to_rlds", 1.0),
+  ("toto", 1.0),
+]
+
 FRAKTAL_MIX = [
     ("fractal20220817_data", 1.0),
 ]
@@ -143,10 +152,10 @@ OXE_FLEX_ACT_SOUP = [
     ("gnm_dataset", 1.0),
     ("aloha_static_dataset", 3.0),
     # ("aloha_dagger_dataset", 1.0),
-    ("aloha_mobile_dataset", 2.0),
+    ("aloha_mobile", 2.0),
     # ("fmb_dataset", 1.0),
     ("dobbe", 1.0),
-    ("roboset", 0.5),
+    ("robo_set", 0.5),
     ("rh20t", 0.5),
 ]
 
@@ -224,9 +233,14 @@ KIT_IRL_REAL_KITCHEN_DELTA_DES_JOINT_EULER = [
     ("kit_irl_real_kitchen_delta_des_joint_euler", 1.0),
 ]
 
+KIT_IRL_REAL_KITCHEN_VIS_DELTA_DES_JOINT_EULER = [
+    ("kit_irl_real_kitchen_vis_delta_des_joint_euler", 1.0),
+]
+
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
     "simpler_env": SIMPLER_ENV,
+    "joint_mix": JOINT_MIX,
     "bridge_marcel": BRIDGE_MARCEL_MIX,
     "bridge": BRIDGE_MIX,
     "rtx": RT_X_MIX,
@@ -240,4 +254,5 @@ OXE_NAMED_MIXES = {
     "finetune_data_delta_joint": KIT_IRL_REAL_KITCHEN_DELTA_JOINT,
     "finetune_data_delta_joint_euler": KIT_IRL_REAL_KITCHEN_DELTA_JOINT_EULER,
     "finetune_data_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_DELTA_DES_JOINT_EULER,
+    "finetune_data_vis_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_VIS_DELTA_DES_JOINT_EULER,
 }
