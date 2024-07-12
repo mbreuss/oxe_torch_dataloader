@@ -585,8 +585,8 @@ def make_interleaved_dataset(
         ), f"Duplicate name {dataset_kwargs['name']}"
         all_dataset_statistics[dataset_kwargs["name"]] = dataset_statistics
 
-    # Get the indices of the "primary" datasets (i.e., datasets with sample_weight == 1.0)
-    primary_dataset_indices = np.array([idx for idx in range(len(sample_weights)) if sample_weights[idx] == 1.0])
+    # Get the indices of the "primary" datasets (i.e., datasets with sample_weight >= 1.0)
+    primary_dataset_indices = np.array([idx for idx in range(len(sample_weights)) if sample_weights[idx] >= 1.0])
 
     # balance and normalize weights
     if balance_weights:
@@ -595,7 +595,7 @@ def make_interleaved_dataset(
     pprint_data_mixture(dataset_kwargs_list, sample_weights)
 
     # Effective Dataset Length = Number of samples until each dataset has completed at least one epoch
-    #   =>> Note :: Only counting the "primary" datasets (i.e., datasets with sample_weight == 1.0)
+    #   =>> Note :: Only counting the "primary" datasets (i.e., datasets with sample_weight >= 1.0)
     dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
 
     # allocate threads based on weights

@@ -1,13 +1,16 @@
 # minimum working example to load the OXE dataset
-from uha import make_pytorch_oxe_iterable_dataset, get_octo_dataset_tensorflow, get_single_dataset_tensorflow
+import os
 import tqdm
 import hydra
 import numpy as np
+from uha import make_pytorch_oxe_iterable_dataset, get_octo_dataset_tensorflow, get_single_dataset_tensorflow
 from omegaconf import DictConfig, OmegaConf
 
 
 @hydra.main(config_path="../uha/data/conf", config_name="uha_default_load_config")
 def main(cfg: DictConfig):
+    if "HOME" in cfg:
+        os.environ["HOME"] = cfg.HOME
     # load Training Dataset from TensorflowDatasets
     dataset = get_octo_dataset_tensorflow(cfg, train=True)
     # dataset = get_single_dataset_tensorflow(cfg, train=True).repeat().unbatch()

@@ -23,7 +23,7 @@ interleaved_dataset_cfg:
     goal_relabeling_kwargs:
         frame_diff: 3
     window_size: 1
-    action_horizon: 2
+    action_horizon: 10
     # skip_unlabeled: True
     # task_augment_strategy: "rephrase_lupus"
     # subsample_length: 100
@@ -80,6 +80,6 @@ interleaved_dataset_cfg:
           secondary: [112, 112]
           # secondary: [112, 112]
           # wrist: [128, 128]
-      # num_parallel_calls: 200
-  # traj_transform_threads: 48
-  # traj_read_threads: 48
+      num_parallel_calls: 512
+  traj_transform_threads: 256
+  traj_read_threads: 256

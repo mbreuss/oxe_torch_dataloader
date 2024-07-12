@@ -15,8 +15,8 @@ SIMPLER_ENV = [
 ]
 
 KIT_IRL_REAL_KITCHEN_MIX = [
-  ("kit_irl_real_kitchen_delta_des_joint_euler", 1.0),
-  ("kit_irl_real_kitchen_vis_delta_des_joint_euler", 0.5),
+  ("kit_irl_real_kitchen_delta_des_joint_euler", 4.0),
+  ("kit_irl_real_kitchen_vis_delta_des_joint_euler", 1.0),
 ]
 
 JOINT_MIX = [
