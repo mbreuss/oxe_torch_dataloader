@@ -91,7 +91,7 @@ def get_single_dataset_tensorflow(cfg: DictConfig, train: bool):
         train=train,
         traj_transform_kwargs=interleaved_dataset_cfg["traj_transform_kwargs"],
         frame_transform_kwargs=interleaved_dataset_cfg["frame_transform_kwargs"],
-        batch_size=1
+        # batch_size=1
     )
 
     return dataset

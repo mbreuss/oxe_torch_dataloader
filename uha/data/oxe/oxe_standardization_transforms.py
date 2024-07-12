@@ -59,6 +59,24 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     return trajectory
 
 
+def kit_irl_dataset_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    trajectory["action"] = tf.concat(
+        [
+            trajectory["delta_des_joint_state"][:, :7],
+            binarize_gripper_actions(trajectory["action"][:, -1], 0.075, 0.065)[:, None],
+        ],
+        axis=-1,
+    )
+    trajectory["observation"]["proprio"] = tf.concat(
+        (
+            trajectory["observation"]["joint_state"][:, :],
+            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.075, 0.065)[:, None],
+        ),
+        axis=1
+    )
+    return trajectory
+
+
 def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         [
@@ -1046,8 +1064,8 @@ OXE_STANDARDIZATION_TRANSFORMS = {
     "kit_irl_real_kitchen_des_joint": kit_irl_dataset_transform,
     "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_transform,
     "kit_irl_real_kitchen_delta_joint_euler": kit_irl_dataset_transform,
-    "kit_irl_real_kitchen_delta_des_joint_euler": kit_irl_dataset_transform,
-    "kit_irl_real_kitchen_vis_delta_des_joint_euler": kit_irl_dataset_transform,
+    "kit_irl_real_kitchen_delta_des_joint_euler": kit_irl_dataset_joint_transform,
+    "kit_irl_real_kitchen_vis_delta_des_joint_euler": kit_irl_dataset_joint_transform,
     # "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_abs_transform,
     # "kit_irl_real_kitchen_des_joint": kit_irl_dataset_abs_transform,
     # "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_abs_transform,

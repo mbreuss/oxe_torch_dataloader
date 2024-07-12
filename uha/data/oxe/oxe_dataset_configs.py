@@ -100,8 +100,8 @@ OXE_DATASET_CONFIGS = {
     "kit_irl_real_kitchen_delta_des_joint_euler": {
         "image_obs_keys": {"primary": "image", "secondary": "wrist_image", "wrist": "wrist_image"},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
-        "proprio_encoding": ProprioEncoding.POS_EULER,
-        "action_encoding": ActionEncoding.EEF_POS,
+        "proprio_encoding": ProprioEncoding.JOINT,
+        "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "~/tensorflow_datasets",
         "language_key": "language_instruction*",
         # "shuffle": False,
@@ -109,8 +109,8 @@ OXE_DATASET_CONFIGS = {
     "kit_irl_real_kitchen_vis_delta_des_joint_euler": {
         "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": None},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
-        "proprio_encoding": ProprioEncoding.POS_EULER,
-        "action_encoding": ActionEncoding.EEF_POS,
+        "proprio_encoding": ProprioEncoding.JOINT,
+        "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "~/tensorflow_datasets",
         # "shuffle": False,
     },
