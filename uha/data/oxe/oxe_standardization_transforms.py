@@ -44,7 +44,7 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         [
             trajectory["action"][:, :6],
-            binarize_gripper_actions(trajectory["action"][:, -1], 0.075, 0.065)[:, None],
+            binarize_gripper_actions(trajectory["action"][:, -1], 0.05, 0.01)[:, None],
         ],
         axis=-1,
     )
@@ -52,7 +52,7 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         (
             trajectory["observation"]["end_effector_pos"][:, :],
             trajectory["observation"]["end_effector_ori"][:, :],
-            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.075, 0.065)[:, None],
+            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.05, 0.01)[:, None],
         ),
         axis=1
     )
@@ -63,14 +63,14 @@ def kit_irl_dataset_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
     trajectory["action"] = tf.concat(
         [
             trajectory["delta_des_joint_state"][:, :7],
-            binarize_gripper_actions(trajectory["action"][:, -1], 0.075, 0.065)[:, None],
+            binarize_gripper_actions(trajectory["action"][:, -1], 0.05, 0.01)[:, None],
         ],
         axis=-1,
     )
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["joint_state"][:, :],
-            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.075, 0.065)[:, None],
+            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.05, 0.01)[:, None],
         ),
         axis=1
     )
@@ -81,7 +81,7 @@ def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         [
             trajectory["action_abs"][:, :6],
-            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.075, 0.065)[:, None],
+            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.05, 0.01)[:, None],
         ],
         axis=-1,
     )
@@ -89,7 +89,7 @@ def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         (
             trajectory["observation"]["end_effector_pos"][:, :],
             trajectory["observation"]["end_effector_ori"][:, :],
-            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.075, 0.065)[:, None],
+            binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.05, 0.01)[:, None],
         ),
         axis=1
     )

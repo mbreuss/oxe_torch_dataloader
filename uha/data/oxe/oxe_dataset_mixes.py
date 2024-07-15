@@ -20,12 +20,14 @@ KIT_IRL_REAL_KITCHEN_MIX = [
 ]
 
 JOINT_MIX = [
-  ("robo_set", 1.0),
-  ("droid", 0.54087122203),
+  ("robo_set", 0.5),
+  ("droid", 0.04),
   ("aloha_mobile", 1.0),
   ("berkeley_mvp_converted_externally_to_rlds", 1.0),
   ("berkeley_rpt_converted_externally_to_rlds", 1.0),
   ("toto", 1.0),
+  ("kit_irl_real_kitchen_delta_des_joint_euler", 6.2),
+  ("kit_irl_real_kitchen_vis_delta_des_joint_euler", 1.333),
 ]
 
 FRAKTAL_MIX = [

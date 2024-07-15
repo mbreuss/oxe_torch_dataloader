@@ -120,6 +120,7 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
         "language_key": "language_instruction*",
+        "dataset_size_limit": 2000,
         # "shuffle": False,
     },
     "fractal20220817_data": {
@@ -577,6 +578,7 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
+        "dataset_size_limit": 2000,
     },
     "rh20t": {
         "image_obs_keys": {
