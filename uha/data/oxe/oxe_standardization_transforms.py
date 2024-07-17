@@ -80,7 +80,7 @@ def kit_irl_dataset_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
 def kit_irl_dataset_abs_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         [
-            trajectory["des_joint_state"][:, :7],
+            trajectory["action_joint_state"][:, :7],
             binarize_gripper_actions(trajectory["action"][:, -1], 0.05, 0.01)[:, None],
         ],
         axis=-1,
