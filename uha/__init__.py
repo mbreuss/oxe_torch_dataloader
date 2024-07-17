@@ -24,7 +24,7 @@ def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn
             num_workers=1, # 1/2 for prefetching, dont increase beyond 2, else we get ddos timeout from gsresearch (1 for HoreKa)
             pin_memory=pin_memory,
             drop_last=drop_last,
-            prefetch_factor=8,
+            prefetch_factor=4,
             shuffle=False if is_single_dataset else None,
         )
     else:

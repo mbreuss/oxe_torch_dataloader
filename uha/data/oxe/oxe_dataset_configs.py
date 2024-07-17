@@ -103,6 +103,7 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "~/tensorflow_datasets",
+        # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
         "language_key": "language_instruction*",
         # "shuffle": False,
     },
@@ -112,6 +113,7 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "~/tensorflow_datasets",
+        # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
         # "shuffle": False,
     },
     "droid": {
@@ -216,6 +218,8 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "data_dir": "~/tensorflow_datasets",
+        # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
     },
     "language_table": {
         "image_obs_keys": {"primary": "rgb", "secondary": None, "wrist": None},
@@ -390,12 +394,16 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_QUAT,
         "action_encoding": ActionEncoding.JOINT_POS,
+        "data_dir": "~/tensorflow_datasets",
+        # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
     },
     "berkeley_rpt_converted_externally_to_rlds": {
         "image_obs_keys": {"primary": None, "secondary": None, "wrist": "hand_image"},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
+        "data_dir": "~/tensorflow_datasets",
+        # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
     },
     "kaist_nonprehensile_converted_externally_to_rlds": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": None},
@@ -548,6 +556,8 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT_BIMANUAL,
         "action_encoding": ActionEncoding.JOINT_POS_BIMANUAL_NAV,
+        "data_dir": "~/tensorflow_datasets",
+        # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
     },
     "fmb_dataset": {
         "image_obs_keys": {
@@ -571,8 +581,8 @@ OXE_DATASET_CONFIGS = {
     },
     "robo_set": {
         "image_obs_keys": {
-            "primary": "image_left",
-            "secondary": "image_right",
+            "primary": "image_top",
+            "secondary": "image_left",
             "wrist": "image_wrist",
         },
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
