@@ -25,7 +25,7 @@ JOINT_MIX = [
   ("aloha_mobile", 1.0),
   ("berkeley_mvp_converted_externally_to_rlds", 1.0),
   ("berkeley_rpt_converted_externally_to_rlds", 1.0),
-  ("toto", 1.0),
+  ("toto", 1.0), # only joint proprio, no action, but we can use proprio as action
   ("kit_irl_real_kitchen_delta_des_joint_euler", 6.2),
   ("kit_irl_real_kitchen_vis_delta_des_joint_euler", 1.333),
 ]

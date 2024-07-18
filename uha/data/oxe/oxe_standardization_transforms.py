@@ -376,7 +376,7 @@ def berkeley_autolab_ur5_dataset_transform(
     return trajectory
 
 
-def toto_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+def toto_dataset_transform_eef(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         (
             trajectory["action"]["world_vector"],
@@ -390,6 +390,23 @@ def toto_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
     return trajectory
+
+
+def toto_dataset_transform_joint(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    joint_actions = tf.concat(
+        (
+            trajectory["observation"]["state"][1:, :],
+            tf.cast(trajectory["action"]["open_gripper"][:-1, None], tf.float32),
+        ),
+        axis=-1,
+    )
+    traj_truncated = tf.nest.map_structure(lambda x: x[:-1], trajectory)
+    traj_truncated["action"] = joint_actions
+    traj_truncated["observation"]["proprio"] = traj_truncated["observation"]["state"]
+    traj_truncated["language_instruction"] = tf.fill(
+        tf.shape(traj_truncated["observation"]["natural_language_instruction"]), ""
+    )  # delete uninformative language instruction
+    return traj_truncated
 
 
 def language_table_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
@@ -716,7 +733,8 @@ def berkeley_mvp_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     # invert gripper
     trajectory["action"] = tf.concat(
         [
-            trajectory["action"][:, :-1],
+            trajectory["action"][:, :-1] + trajectory["observation"]["joint_pos"],
+            # trajectory["action"][:, :-1],
             invert_gripper_actions(trajectory["action"][:, -1:]),
         ],
         axis=1,
@@ -741,7 +759,7 @@ def berkeley_rpt_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     # recompute actions for downsampled sequence
     joint_actions = (
         trajectory["observation"]["joint_pos"][1:, :7]
-        - trajectory["observation"]["joint_pos"][:-1, :7]
+        # - trajectory["observation"]["joint_pos"][:-1, :7]
     )
     traj_truncated = tf.nest.map_structure(lambda x: x[:-1], trajectory)
 
@@ -1042,7 +1060,8 @@ def roboset_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
     trajectory["action"] = tf.concat(
         (
-            trajectory["action"][:, :7],
+            trajectory["action"][:, :7] + trajectory["observation"]["state"][:, :7],
+            # trajectory["action"][:, :7],
             gripper_action,
         ),
         axis=-1,
@@ -1100,7 +1119,7 @@ OXE_STANDARDIZATION_TRANSFORMS = {
     "nyu_door_opening_surprising_effectiveness": nyu_door_opening_dataset_transform,
     "viola": viola_dataset_transform,
     "berkeley_autolab_ur5": berkeley_autolab_ur5_dataset_transform,
-    "toto": toto_dataset_transform,
+    "toto": toto_dataset_transform_joint,
     "language_table": language_table_dataset_transform,
     "columbia_cairlab_pusht_real": pusht_dataset_transform,
     "stanford_kuka_multimodal_dataset_converted_externally_to_rlds": stanford_kuka_multimodal_dataset_transform,
