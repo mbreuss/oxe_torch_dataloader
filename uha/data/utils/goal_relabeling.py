@@ -62,7 +62,12 @@ def uniform_and_future(traj: dict, max_goal_distance: Optional[int] = None, fram
 
     # adds keys to "task" mirroring "observation" keys (must do a tree merge to combine "pad_mask_dict" from
     # "observation" and "task" properly)
-    goal = tf.nest.map_structure(lambda x: tf.gather(x, goal_idxs), traj["observation"])
+    # goal = tf.nest.map_structure(lambda x: tf.gather(x, goal_idxs), traj["observation"])
+    goal = {
+        "image_primary": tf.gather(traj["observation"]["image_primary"], goal_idxs),
+        "pad_mask_dict": tf.nest.map_structure(lambda x: tf.gather(x, goal_idxs), traj["observation"]["pad_mask_dict"]),
+        "timestep": tf.gather(traj["observation"]["timestep"], goal_idxs)
+    }
     traj["task"] = tree_merge(traj["task"], goal)
     
 
