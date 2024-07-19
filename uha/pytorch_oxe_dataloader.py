@@ -35,7 +35,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         self._bytes_to_string = transform_dict["bytes_to_string"] if transform_dict is not None and "bytes_to_string" in transform_dict else True
 
     def __iter__(self):
-        for sample in self._rlds_dataset.iterator(prefetch=8): # 4 * batchsize
+        for sample in self._rlds_dataset.iterator(prefetch=1024): # 4 * batchsize
         # for sample in self._rlds_dataset.as_numpy_iterator():
             if self._is_single_dataset: # yield only 1 element of trajectorie
                 self._current_length = sample["action"].shape[0]
@@ -147,3 +147,54 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                         transformed_sample[value] = sample[old_key]
 
             return transformed_sample
+
+class TorchRLDSIterableDatasetTF(torch.utils.data.IterableDataset):
+    """Thin wrapper around RLDS dataset for use with PyTorch dataloaders."""
+
+    def __init__(
+            self,
+            rlds_dataset: DLataset,
+            train=True,
+            transform_dict = None,
+            language_encoder: nn.Module = NoEncoder(),
+            is_single_dataset: bool = False,
+    ):
+        super(TorchRLDSIterableDatasetTF).__init__()
+        self._rlds_dataset = rlds_dataset
+        self._is_train = train
+        self._language_encoder = language_encoder
+        self._is_single_dataset = is_single_dataset
+        self._current_length = 0
+        self.rlds_iter = map(self.process_batch, self._rlds_dataset.iterator(prefetch=1024))
+
+    def __iter__(self):
+        for sample in self.rlds_iter: # 4 * batchsize
+        # for sample in self._rlds_dataset.as_numpy_iterator():
+            yield sample
+
+    def __len__(self):
+        if hasattr(self._rlds_dataset, "dataset_len"):
+            # print("dataset_len called", self._rlds_dataset.dataset_len)
+            return self._rlds_dataset.dataset_len
+        lengths = np.array(
+            [
+                stats["num_transitions"]
+                for stats in self._rlds_dataset.dataset_statistics
+            ]
+        )
+        if hasattr(self._rlds_dataset, "sample_weights"):
+            lengths = np.array(self._rlds_dataset.sample_weights) * lengths
+        total_len = lengths.sum()
+        # print("num_transitions called", total_len)
+        if self._is_train:
+            return int(0.95 * total_len)
+        else:
+            return int(0.05 * total_len)
+
+    def process_batch(self, batch):
+        if isinstance(self._language_encoder, NoEncoder):
+            batch["task"].pop("language_instruction")
+        else:
+            batch["task"]["language_instruction"] = self._language_encoder(batch["task"]["language_instruction"].decode("utf-8"))
+        del batch["dataset_name"]
+        return batch
