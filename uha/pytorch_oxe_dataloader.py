@@ -165,10 +165,10 @@ class TorchRLDSIterableDatasetTF(torch.utils.data.IterableDataset):
         self._language_encoder = language_encoder
         self._is_single_dataset = is_single_dataset
         self._current_length = 0
-        self.rlds_iter = map(self.process_batch, self._rlds_dataset.iterator(prefetch=1024))
 
     def __iter__(self):
-        for sample in self.rlds_iter: # 4 * batchsize
+        rlds_iter = map(self.process_batch, self._rlds_dataset.iterator()) # prefetch=1024
+        for sample in rlds_iter: # 4 * batchsize
         # for sample in self._rlds_dataset.as_numpy_iterator():
             yield sample
 

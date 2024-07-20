@@ -2,7 +2,7 @@ from uha.data.dataset import make_interleaved_dataset, make_single_dataset
 from uha.data.oxe import make_oxe_dataset_kwargs_and_weights
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
-from uha.pytorch_oxe_dataloader import TorchRLDSIterableDataset
+from uha.pytorch_oxe_dataloader import TorchRLDSIterableDataset, TorchRLDSIterableDatasetTF
 from uha.data.utils.data_utils import NormalizationType
 import tensorflow as tf
 
