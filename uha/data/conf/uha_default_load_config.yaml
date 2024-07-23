@@ -80,6 +80,6 @@ interleaved_dataset_cfg:
           primary: [112, 112]
           secondary: [112, 112]
           wrist: [128, 128]
-      # num_parallel_calls: 512
-  # traj_transform_threads: 256
-  # traj_read_threads: 256
+      num_parallel_calls: 64 # 1024 # 512 # 256
+  traj_transform_threads: 16 # 512 # 256 # 128
+  traj_read_threads: 32 # 512 # 256 # 128
