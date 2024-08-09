@@ -89,8 +89,8 @@ def main(cfg: DictConfig):
             full_dataset,
             hash_dependencies=(
                 str(builder.info),
-                str(dataset["state_obs_keys"]),
-                inspect.getsource(dataset["standardize_fn"]) if dataset["standardize_fn"] is not None else "",
+                # str(dataset["state_obs_keys"]),
+                # inspect.getsource(dataset["standardize_fn"]) if dataset["standardize_fn"] is not None else "",
             ),
             save_dir=builder.data_dir,
         )
