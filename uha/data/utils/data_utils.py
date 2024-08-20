@@ -145,6 +145,57 @@ def filter_by_language_key(traj, *, language_key_template):
     return tf.math.reduce_any(labels != "")
 
 
+def filter_by_task(traj, *, task_templates,negative_task_templates):
+    metadata = traj["episode_metadata"]["file_path"]
+    pos_match = False
+    pos_match = tf.math.reduce_any([task_template in metadata for task_template in task_templates])
+    neg_match = False
+    neg_match = tf.math.reduce_any([task_template in metadata for task_template in negative_task_templates])
+    valid_traj = pos_match and not neg_match
+    return valid_traj
+
+
+def filter_by_task_and_language_key(traj, *, language_key_gt_template,language_key_NILS_template,gt_task_templates,NILS_task_templates,negative_task_templates):
+    metadata = traj["traj_metadata"]["episode_metadata"]["file_path"][0]
+    logging.info(f"metadata: {metadata}")
+    logging.info(traj[language_key_gt_template])
+    has_gt_annotation = False
+    has_NILS_annotation = False
+    if traj[language_key_gt_template][0] != "":
+        has_gt_annotation = True
+    if traj[language_key_NILS_template][0] != "":
+        has_NILS_annotation = True
+
+    if len(gt_task_templates) > 0:
+        if gt_task_templates[0] == "REMAINING":
+            pos_match_gt = True
+        else:
+            pos_pattern = '|'.join([".*" + template + ".*" for template in gt_task_templates])
+            pos_match_gt = tf.reduce_any(tf.strings.regex_full_match(metadata, pos_pattern))
+    else:
+        pos_match_gt = False
+
+    if len(NILS_task_templates) > 0:
+        pos_pattern_NILS = '|'.join([".*" + template + ".*" for template in NILS_task_templates])
+        pos_match_NILS = (tf.strings.regex_full_match(metadata, pos_pattern_NILS))
+        logging.info(f"pos_match_NILS: {pos_match_NILS}")
+    else:
+        pos_match_NILS = False
+
+    if len(negative_task_templates) > 0:
+        neg_pattern = '|'.join([".*" + template + ".*" for template in negative_task_templates])
+        neg_match = tf.reduce_any(tf.strings.regex_full_match(metadata, neg_pattern))
+    else:
+        neg_match = False
+
+    valid_traj = ((pos_match_gt and has_gt_annotation) or (pos_match_NILS and has_NILS_annotation)) and not neg_match
+    valid_traj = tf.cast(valid_traj, tf.bool)
+
+    logging.info(f"valid_traj: {valid_traj}")
+
+    return valid_traj
+
+
 def pprint_data_mixture(
     dataset_kwargs_list: List[Dict[str, Any]], dataset_weights: List[int]
 ) -> None:

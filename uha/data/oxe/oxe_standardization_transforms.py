@@ -1097,6 +1097,7 @@ def mujoco_manip_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
 
 OXE_STANDARDIZATION_TRANSFORMS = {
     "bridge": bridge_transform,
+    "bridge_dataset_without_single": bridge_transform,
     "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_transform,
     "kit_irl_real_kitchen_des_joint": kit_irl_dataset_transform,
     "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_transform,

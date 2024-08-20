@@ -269,6 +269,9 @@ def make_dataset_from_rlds(
     depth_obs_keys: Mapping[str, Optional[str]] = {},
     proprio_obs_key: Optional[str] = None,
     language_key: Optional[str] = None,
+    language_key_NILS: Optional[str] = None,
+    Gt_ann_dirs: Optional[list] = None,
+    NILS_ann_dirs: Optional[list] = None,
     action_proprio_normalization_type: NormalizationType = NormalizationType.NORMAL,
     dataset_statistics: Optional[Union[dict, str]] = None,
     force_recompute_dataset_statistics: bool = False,
@@ -383,14 +386,54 @@ def make_dataset_from_rlds(
 
         # extracts `language_key` into the "task" dict, or samples uniformly if `language_key` fnmatches multiple keys
         task = {}
+
+        if Gt_ann_dirs is not None and NILS_ann_dirs is not None:
+            # NILS language_instruction
+            path = traj["traj_metadata"]["episode_metadata"]["file_path"][0]
+            gt_ann_dirs_regex = "|".join([".*" + key + ".*" for key in Gt_ann_dirs])
+            NILS_ann_dirs_regex = "|".join([".*" + key + ".*" for key in NILS_ann_dirs])
+            #use_gt_ann = any([key in path for key in Gt_ann_dirs])
+            #use_NILS_ann = any([key in path for key in NILS_ann_dirs])
+            use_gt_ann=  tf.strings.regex_full_match(path, gt_ann_dirs_regex)
+            use_NILS_ann= tf.strings.regex_full_match(path, NILS_ann_dirs_regex)
+            if len(Gt_ann_dirs) > 0 and Gt_ann_dirs[0] == "REMAINING" and not use_NILS_ann:
+                use_gt_ann = True
+                use_NILS_ann = False
+
+            logging.info(f"GT: {use_gt_ann}")
+            logging.info(f"NILS: {use_NILS_ann}")
+
+            if use_gt_ann:
+                logging.info("Using GT")
+                task["language_instruction"] = sample_match_keys_uniform(traj, language_key)
+                local_lang_key = language_key
+            elif use_NILS_ann:
+                task["language_instruction"] = sample_match_keys_uniform(traj, language_key_NILS + "*")
+                local_lang_key = language_key_NILS
+            else:
+                task["language_instruction"] =  sample_match_keys_uniform(traj, language_key_NILS + "*")
+                local_lang_key = "ERROR"
+        else:
+            # normal language_instruction
+            local_lang_key = language_key
+            if language_key is not None:
+                task["language_instruction"] = sample_match_keys_uniform(traj, language_key)
+
+        logging.info(f"Local Lang Key: {local_lang_key}")
         if language_key is not None:
-            task["language_instruction"] = sample_match_keys_uniform(traj, language_key)
+            # additional NILS stuff, doesn't affect normal language_instruction
+            if local_lang_key == "ERROR":
+                task["language_key"] = tf.repeat(-1, traj_len)
+            elif tf.strings.regex_full_match(local_lang_key, ".*NILS.*"):
+                task["language_key"] = tf.repeat(1, traj_len)
+            else:
+                task["language_key"] = tf.repeat(0, traj_len)
+
             if task["language_instruction"].dtype != tf.string:
                 raise ValueError(
-                    f"Language key {language_key} has dtype {task['language_instruction'].dtype}, "
+                    f"Language key {local_lang_key} has dtype {task['language_instruction'].dtype}, "
                     "but it must be tf.string."
                 )
-
         traj = {
             "observation": new_obs,
             "task": task,

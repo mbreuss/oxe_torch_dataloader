@@ -14,8 +14,10 @@ Target configuration:
 """
 from enum import IntEnum
 
-from uha.data.utils.data_utils import filter_by_language_key
+from uha.data.utils.data_utils import filter_by_language_key, filter_by_task_and_language_key
 from uha.data.utils.spec import ModuleSpec
+
+pnp_task_list_bridge  =  ["put", "pick", "take", "pnp", "icra", "rss", "many_skills", "lift_bowl", "move_drying", "wipe", "right_pepper", "topple", "upright", "flip"]
 
 
 class ProprioEncoding(IntEnum):
@@ -60,6 +62,95 @@ OXE_DATASET_CONFIGS = {
             filter_by_language_key,
             language_key_template="language_instruction*"
         ))
+    },
+    "bridge_dataset_pnp_no_drawer_machine_fold_with_v1_NILS": {
+        "image_obs_keys": {"primary": "image_0", "secondary": "image_1", "wrist": None},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        "language_key": "language_instruction",
+        "language_key_NILS": "language_instruction_NILS",
+        "Gt_ann_dirs": ["bridge_data_v1"],
+        "NILS_ann_dirs": pnp_task_list_bridge,
+        "filter_functions": (ModuleSpec.create(
+            filter_by_task_and_language_key,
+            language_key_gt_template="language_instruction",
+            language_key_NILS_template="language_instruction_NILS_0",
+            gt_task_templates=["bridge_data_v1"],
+            NILS_task_templates=pnp_task_list_bridge,
+            negative_task_templates=["drawer", "machine", "fold"]),)
+    },
+
+    "bridge_dataset_full_NILS": {
+        "image_obs_keys": {"primary": "image_0", "secondary": "image_1", "wrist": None},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        "language_key": "language_instruction",
+        "language_key_NILS": "language_instruction_NILS",
+        "Gt_ann_dirs": ["REMAINING"],
+        "NILS_ann_dirs": pnp_task_list_bridge,
+        "filter_functions": (ModuleSpec.create(
+            filter_by_task_and_language_key,
+            language_key_gt_template="language_instruction",
+            language_key_NILS_template="language_instruction_NILS_0",
+            gt_task_templates=["REMAINING"],
+            NILS_task_templates=pnp_task_list_bridge,
+            negative_task_templates=[]),)
+    },
+
+    "bridge_dataset_without_single": {
+        "image_obs_keys": {"primary": "image_0", "secondary": "image_1", "wrist": None},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        "language_key": "language_instruction",
+        "language_key_NILS": "language_instruction_NILS",
+        "Gt_ann_dirs": [],
+        "data_dir": "/home/blank/tensorflow_datasets",
+        "NILS_ann_dirs": pnp_task_list_bridge,
+        "filter_functions": (ModuleSpec.create(
+            filter_by_task_and_language_key,
+            language_key_gt_template="language_instruction",
+            language_key_NILS_template="language_instruction_NILS_0",
+            gt_task_templates=[],
+            NILS_task_templates=pnp_task_list_bridge,
+            negative_task_templates=["drawer", "machine", "fold", "bridgev1"]),)
+    },
+    "bridge_dataset_pnp_no_drawer_machine_fold_GEMINI": {
+        "image_obs_keys": {"primary": "image_0", "secondary": "image_1", "wrist": None},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        "language_key": "language_instruction",
+        "language_key_NILS": "language_instruction_Gemini",
+        "Gt_ann_dirs": [],
+        "NILS_ann_dirs": pnp_task_list_bridge,
+        "filter_functions": (ModuleSpec.create(
+            filter_by_task_and_language_key,
+            language_key_gt_template="language_instruction",
+            language_key_NILS_template="language_instruction_Gemini_0",
+            gt_task_templates=[],
+            NILS_task_templates=pnp_task_list_bridge,
+            negative_task_templates=["drawer", "machine", "fold", "bridgev1"]),)
+    },
+
+    "bridge_dataset_pnp_NILS": {
+        "image_obs_keys": {"primary": "image_0", "secondary": "image_1", "wrist": None},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.POS_EULER,
+        "action_encoding": ActionEncoding.EEF_POS,
+        "language_key": "language_instruction",
+        "language_key_NILS": "language_instruction_NILS",
+        "Gt_ann_dirs": [],
+        "NILS_ann_dirs": pnp_task_list_bridge,
+        "filter_functions": (ModuleSpec.create(
+            filter_by_task_and_language_key,
+            language_key_gt_template="language_instruction",
+            language_key_NILS_template="language_instruction_NILS_0",
+            gt_task_templates=[],
+            NILS_task_templates=pnp_task_list_bridge,
+            negative_task_templates=[]),)
     },
     "kit_irl_real_kitchen_delta_des_joint": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": "wrist_image"},

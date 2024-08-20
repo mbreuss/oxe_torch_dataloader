@@ -1,3 +1,4 @@
+import torch
 from uha.data.dataset import make_interleaved_dataset, make_single_dataset
 from uha.data.oxe import make_oxe_dataset_kwargs_and_weights
 from omegaconf import DictConfig, OmegaConf
@@ -24,8 +25,40 @@ def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn
             num_workers=1, # 1/2 for prefetching, dont increase beyond 2, else we get ddos timeout from gsresearch (1 for HoreKa)
             pin_memory=pin_memory,
             drop_last=drop_last,
-            prefetch_factor=4,
+            prefetch_factor=8,
             shuffle=False if is_single_dataset else None,
+        )
+    else:
+        return DataLoader(
+            torch_itarable,
+            batch_size=batch_size,
+            num_workers=0, # important to keep this to 0 so PyTorch does not mess with the parallelism
+            pin_memory=pin_memory,
+            drop_last=drop_last,
+            shuffle=False if is_single_dataset else None,
+        )
+    
+    
+def multi_worker_iterable_dataset(dataset: dl.DLataset, language_encoder: nn.Module = None, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False, is_single_dataset=False, main_process=False):
+    if language_encoder is not None:
+        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, language_encoder=language_encoder, is_single_dataset=is_single_dataset)
+    else:
+        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, is_single_dataset=is_single_dataset)
+
+    def worker_init_fn(worker_id):
+        worker_info = torch.utils.data.get_worker_info()
+        worker_info.dataset = torch_itarable
+
+    if main_process:
+        return DataLoader(
+            torch_itarable,
+            batch_size=batch_size,
+            num_workers=2, # 1/2 for prefetching, dont increase beyond 2, else we get ddos timeout from gsresearch (1 for HoreKa)
+            pin_memory=pin_memory,
+            drop_last=drop_last,
+            prefetch_factor=8,
+            shuffle=False if is_single_dataset else None,
+            worker_init_fn=worker_init_fn
         )
     else:
         return DataLoader(

@@ -9,6 +9,25 @@ BRIDGE_MARCEL_MIX = [
     ("bridge", 1.0),
 ]
 
+BRIDGE_PNP_MIX = [
+    ("bridge_dataset_pnp_NILS", 1.0),
+]
+BRIDGE_PNP_MIX_NO_DRAWER_NO_V1 = [
+    ("bridge_dataset_without_single", 1.0)
+]
+
+BRIDGE_PNP_MIX_NO_DRAWER_NO_V1_GEMINI = [
+    ("bridge_dataset_pnp_no_drawer_machine_fold_GEMINI", 1.0)
+]
+
+BRIDGE_PNP_MIX_NO_DRAWER_V1 = [
+    ("bridge_dataset_pnp_no_drawer_machine_fold_with_v1_NILS", 1.0)
+]
+
+BRIDGE_ALL_GT_MIX = [
+    ("bridge_dataset_full_NILS", 1.0),
+]
+
 SIMPLER_ENV = [
   ("bridge_dataset", 1.0),
   ("fractal20220817_data", 0.6),
@@ -250,6 +269,11 @@ OXE_NAMED_MIXES = {
     "real_kitchen_mix": KIT_IRL_REAL_KITCHEN_MIX,
     "joint_mix": JOINT_MIX,
     "bridge_marcel": BRIDGE_MARCEL_MIX,
+    "bridge_pnp": BRIDGE_PNP_MIX,
+    "bridge_pnp_no_drawer_no_v1": BRIDGE_PNP_MIX_NO_DRAWER_NO_V1,
+    "bridge_pnp_no_drawer_v1": BRIDGE_PNP_MIX_NO_DRAWER_V1,
+    "bridge_pnp_no_drawer_no_v1_gemini" : BRIDGE_PNP_MIX_NO_DRAWER_NO_V1_GEMINI,
+    "bridge_all_gt": BRIDGE_ALL_GT_MIX,
     "bridge": BRIDGE_MIX,
     "rtx": RT_X_MIX,
     "rtx_franka": RT_X_MIX + OXE_FRANKA_MIX,
