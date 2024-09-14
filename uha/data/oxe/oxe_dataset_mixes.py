@@ -239,28 +239,25 @@ OXE_FULL_MIX = [
     ("gnm_dataset", 1.0),
 ]
 
-KIT_IRL_REAL_KITCHEN = [
-    ("kit_irl_real_kitchen_delta_des_joint", 1.0),
-]
-
-KIT_IRL_REAL_KITCHEN_DES_JOINT = [
-    ("kit_irl_real_kitchen_des_joint", 1.0),
-]
-
-KIT_IRL_REAL_KITCHEN_DELTA_JOINT = [
-    ("kit_irl_real_kitchen_delta_joint", 1.0),
-]
-
-KIT_IRL_REAL_KITCHEN_DELTA_JOINT_EULER = [
-    ("kit_irl_real_kitchen_delta_joint_euler", 1.0),
-]
-
 KIT_IRL_REAL_KITCHEN_DELTA_DES_JOINT_EULER = [
     ("kit_irl_real_kitchen_delta_des_joint_euler", 1.0),
 ]
-
 KIT_IRL_REAL_KITCHEN_VIS_DELTA_DES_JOINT_EULER = [
     ("kit_irl_real_kitchen_vis_delta_des_joint_euler", 1.0),
+]
+
+# === LIBERO Datasets (Modified Versions) ===
+LIBERO_SPATIAL_NO_NOOPS = [
+  ("libero_spatial_no_noops", 1.0),
+]
+LIBERO_OBJECT_NO_NOOPS = [
+  ("libero_object_no_noops", 1.0),
+]
+LIBERO_GOAL_NO_NOOPS = [
+  ("libero_goal_no_noops", 1.0),
+]
+LIBERO_10_NO_NOOPS = [
+  ("libero_10_no_noops", 1.0),
 ]
 
 OXE_NAMED_MIXES = {
@@ -275,16 +272,16 @@ OXE_NAMED_MIXES = {
     "bridge_pnp_no_drawer_no_v1_gemini" : BRIDGE_PNP_MIX_NO_DRAWER_NO_V1_GEMINI,
     "bridge_all_gt": BRIDGE_ALL_GT_MIX,
     "bridge": BRIDGE_MIX,
+    "libero_spatial": LIBERO_SPATIAL_NO_NOOPS,
+    "libero_object": LIBERO_OBJECT_NO_NOOPS,
+    "libero_goal": LIBERO_GOAL_NO_NOOPS,
+    "libero_10": LIBERO_10_NO_NOOPS,
     "rtx": RT_X_MIX,
     "rtx_franka": RT_X_MIX + OXE_FRANKA_MIX,
     "oxe_magic_soup": OXE_MAGIC_SOUP,
     "oxe_flex_act_soup": OXE_FLEX_ACT_SOUP,
     "oxe_magic_soup_lang_only": OXE_MAGIC_SOUP_LANG_ONLY,
     "small_test": SMALL_TEST_SET,
-    "finetune_data": KIT_IRL_REAL_KITCHEN,
-    "finetune_data_des_joint": KIT_IRL_REAL_KITCHEN_DES_JOINT,
-    "finetune_data_delta_joint": KIT_IRL_REAL_KITCHEN_DELTA_JOINT,
-    "finetune_data_delta_joint_euler": KIT_IRL_REAL_KITCHEN_DELTA_JOINT_EULER,
     "finetune_data_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_DELTA_DES_JOINT_EULER,
     "finetune_data_vis_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_VIS_DELTA_DES_JOINT_EULER,
 }
