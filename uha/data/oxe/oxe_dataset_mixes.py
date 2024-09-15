@@ -259,6 +259,12 @@ LIBERO_GOAL_NO_NOOPS = [
 LIBERO_10_NO_NOOPS = [
   ("libero_10_no_noops", 1.0),
 ]
+LIBERO_ALL = [
+  ("libero_spatial_no_noops", 1.0),
+  ("libero_object_no_noops", 1.0),
+  ("libero_goal_no_noops", 1.0),
+  ("libero_10_no_noops", 1.0),
+]
 
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
@@ -284,4 +290,5 @@ OXE_NAMED_MIXES = {
     "small_test": SMALL_TEST_SET,
     "finetune_data_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_DELTA_DES_JOINT_EULER,
     "finetune_data_vis_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_VIS_DELTA_DES_JOINT_EULER,
+    "libero_all": LIBERO_ALL,
 }
