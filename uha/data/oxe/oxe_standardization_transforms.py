@@ -1115,17 +1115,10 @@ def libero_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 OXE_STANDARDIZATION_TRANSFORMS = {
     "bridge": bridge_transform,
     "bridge_dataset_without_single": bridge_transform,
-    "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_transform,
-    "kit_irl_real_kitchen_des_joint": kit_irl_dataset_transform,
-    "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_transform,
-    "kit_irl_real_kitchen_delta_joint_euler": kit_irl_dataset_transform,
-    "kit_irl_real_kitchen_delta_des_joint_euler": kit_irl_dataset_abs_joint_transform,
-    "kit_irl_real_kitchen_vis_delta_des_joint_euler": kit_irl_dataset_abs_joint_transform,
-    # "kit_irl_real_kitchen_delta_des_joint": kit_irl_dataset_abs_transform,
-    # "kit_irl_real_kitchen_des_joint": kit_irl_dataset_abs_transform,
-    # "kit_irl_real_kitchen_delta_joint": kit_irl_dataset_abs_transform,
-    # "kit_irl_real_kitchen_delta_joint_euler": kit_irl_dataset_abs_transform,
-    # "kit_irl_real_kitchen_delta_des_joint_euler": kit_irl_dataset_abs_transform,
+    "kit_irl_real_kitchen_delta_des_joint_euler": kit_irl_dataset_abs_joint_transform, # old
+    "kit_irl_real_kitchen_vis_delta_des_joint_euler": kit_irl_dataset_abs_joint_transform, # old
+    "kit_irl_real_kitchen_vis": kit_irl_dataset_abs_joint_transform, # kit_irl_dataset_abs_joint_transform # kit_irl_dataset_joint_transform # kit_irl_dataset_abs_transform # kit_irl_dataset_transform
+    "kit_irl_real_kitchen_lang": kit_irl_dataset_abs_joint_transform, # kit_irl_dataset_abs_joint_transform # kit_irl_dataset_joint_transform # kit_irl_dataset_abs_transform # kit_irl_dataset_transform
     "droid": droid_dataset_transform,
     "bridge_dataset": bridge_dataset_transform,
     "fractal20220817_data": rt1_dataset_transform,

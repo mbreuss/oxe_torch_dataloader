@@ -152,42 +152,7 @@ OXE_DATASET_CONFIGS = {
             NILS_task_templates=pnp_task_list_bridge,
             negative_task_templates=[]),)
     },
-    "kit_irl_real_kitchen_delta_des_joint": {
-        "image_obs_keys": {"primary": "image", "secondary": None, "wrist": "wrist_image"},
-        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
-        "proprio_encoding": ProprioEncoding.POS_EULER,
-        "action_encoding": ActionEncoding.EEF_POS,
-        "data_dir": "~/tensorflow_datasets",
-        "language_key": "language_instruction*",
-        # "shuffle": False,
-    },
-    "kit_irl_real_kitchen_des_joint": {
-        "image_obs_keys": {"primary": "image", "secondary": "wrist_image", "wrist": "wrist_image"},
-        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
-        "proprio_encoding": ProprioEncoding.POS_EULER,
-        "action_encoding": ActionEncoding.EEF_POS,
-        "data_dir": "~/tensorflow_datasets",
-        "language_key": "language_instruction*",
-        # "shuffle": False,
-    },
-    "kit_irl_real_kitchen_delta_joint": {
-        "image_obs_keys": {"primary": "image", "secondary": None, "wrist": "wrist_image"},
-        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
-        "proprio_encoding": ProprioEncoding.POS_EULER,
-        "action_encoding": ActionEncoding.EEF_POS,
-        "data_dir": "~/tensorflow_datasets",
-        "language_key": "language_instruction*",
-        # "shuffle": False,
-    },
-    "kit_irl_real_kitchen_delta_joint_euler": {
-        "image_obs_keys": {"primary": "image", "secondary": None, "wrist": "wrist_image"},
-        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
-        "proprio_encoding": ProprioEncoding.POS_EULER,
-        "action_encoding": ActionEncoding.EEF_POS,
-        "data_dir": "~/tensorflow_datasets",
-        "language_key": "language_instruction*",
-        # "shuffle": False,
-    },
+    # old, use below
     "kit_irl_real_kitchen_delta_des_joint_euler": {
         "image_obs_keys": {"primary": "image", "secondary": "wrist_image", "wrist": "wrist_image"},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
@@ -198,6 +163,7 @@ OXE_DATASET_CONFIGS = {
         "language_key": "language_instruction*",
         # "shuffle": False,
     },
+    # old, use below
     "kit_irl_real_kitchen_vis_delta_des_joint_euler": {
         "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": None},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
@@ -205,6 +171,23 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "~/tensorflow_datasets",
         # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
+        # "shuffle": False,
+    },
+    "kit_irl_real_kitchen_lang": {
+        "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": "wrist_image"},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.JOINT,
+        "action_encoding": ActionEncoding.JOINT_POS,
+        "data_dir": "/home/marcelr/tensorflow_datasets",
+        "language_key": "language_instruction*",
+        # "shuffle": False,
+    },
+    "kit_irl_real_kitchen_vis": {
+        "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": None},
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.JOINT,
+        "action_encoding": ActionEncoding.JOINT_POS,
+        "data_dir": "/home/marcelr/tensorflow_datasets",
         # "shuffle": False,
     },
     "droid": {

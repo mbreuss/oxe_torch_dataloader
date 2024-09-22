@@ -34,8 +34,13 @@ SIMPLER_ENV = [
 ]
 
 KIT_IRL_REAL_KITCHEN_MIX = [
-  ("kit_irl_real_kitchen_delta_des_joint_euler", 4.0),
-  ("kit_irl_real_kitchen_vis_delta_des_joint_euler", 1.0),
+  ("kit_irl_real_kitchen_lang", 1.0),
+  ("kit_irl_real_kitchen_vis", 1.0),
+]
+
+REAL_KITCHEN_DROID_CO_TRAINING = [
+  ("kit_irl_real_kitchen_lang", 1.0),
+  ("droid", 0.00093374110191941499546243790359),
 ]
 
 JOINT_MIX = [
@@ -245,6 +250,12 @@ KIT_IRL_REAL_KITCHEN_DELTA_DES_JOINT_EULER = [
 KIT_IRL_REAL_KITCHEN_VIS_DELTA_DES_JOINT_EULER = [
     ("kit_irl_real_kitchen_vis_delta_des_joint_euler", 1.0),
 ]
+KIT_IRL_REAL_KITCHEN_LANG = [
+    ("kit_irl_real_kitchen_lang", 1.0),
+]
+KIT_IRL_REAL_KITCHEN_VIS = [
+    ("kit_irl_real_kitchen_vis", 1.0),
+]
 
 # === LIBERO Datasets (Modified Versions) ===
 LIBERO_SPATIAL_NO_NOOPS = [
@@ -270,6 +281,11 @@ OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
     "simpler_env": SIMPLER_ENV,
     "real_kitchen_mix": KIT_IRL_REAL_KITCHEN_MIX,
+    "real_kitchen_lang": KIT_IRL_REAL_KITCHEN_LANG,
+    "real_kitchen_vis": KIT_IRL_REAL_KITCHEN_VIS,
+    "finetune_data_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_DELTA_DES_JOINT_EULER,
+    "finetune_data_vis_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_VIS_DELTA_DES_JOINT_EULER,
+    "real_kitchen_droid_co_training": REAL_KITCHEN_DROID_CO_TRAINING,
     "joint_mix": JOINT_MIX,
     "bridge_marcel": BRIDGE_MARCEL_MIX,
     "bridge_pnp": BRIDGE_PNP_MIX,
@@ -288,7 +304,5 @@ OXE_NAMED_MIXES = {
     "oxe_flex_act_soup": OXE_FLEX_ACT_SOUP,
     "oxe_magic_soup_lang_only": OXE_MAGIC_SOUP_LANG_ONLY,
     "small_test": SMALL_TEST_SET,
-    "finetune_data_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_DELTA_DES_JOINT_EULER,
-    "finetune_data_vis_delta_des_joint_euler": KIT_IRL_REAL_KITCHEN_VIS_DELTA_DES_JOINT_EULER,
     "libero_all": LIBERO_ALL,
 }
