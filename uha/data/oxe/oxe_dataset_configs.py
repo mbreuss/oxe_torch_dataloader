@@ -196,7 +196,7 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
         "language_key": "language_instruction*",
-        # "dataset_size_limit": 2000,
+        "dataset_size_limit": 1000,
         # "shuffle": False,
     },
     "fractal20220817_data": {
