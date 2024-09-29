@@ -276,6 +276,14 @@ LIBERO_ALL = [
   ("libero_goal_no_noops", 1.0),
   ("libero_10_no_noops", 1.0),
 ]
+SIMPLER_LIBERO_ALL = [
+  ("libero_spatial_no_noops", 1.0),
+  ("libero_object_no_noops", 1.0),
+  ("libero_goal_no_noops", 1.0),
+  ("libero_10_no_noops", 1.0),
+  ("bridge_dataset", 1.0),
+  ("fractal20220817_data", 1.0),
+]
 
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
@@ -305,4 +313,5 @@ OXE_NAMED_MIXES = {
     "oxe_magic_soup_lang_only": OXE_MAGIC_SOUP_LANG_ONLY,
     "small_test": SMALL_TEST_SET,
     "libero_all": LIBERO_ALL,
+    "simulation_all": SIMPLER_LIBERO_ALL,
 }
