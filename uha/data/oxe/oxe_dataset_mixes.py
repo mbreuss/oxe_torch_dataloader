@@ -277,10 +277,10 @@ LIBERO_ALL = [
   ("libero_10_no_noops", 1.0),
 ]
 SIMPLER_LIBERO_ALL = [
-  ("libero_spatial_no_noops", 1.0),
-  ("libero_object_no_noops", 1.0),
-  ("libero_goal_no_noops", 1.0),
-  ("libero_10_no_noops", 1.0),
+  ("libero_spatial_no_noops", 8.0),
+  ("libero_object_no_noops", 8.0),
+  ("libero_goal_no_noops", 8.0),
+  ("libero_10_no_noops", 8.0),
   ("bridge_dataset", 1.0),
   ("fractal20220817_data", 1.0),
 ]

@@ -7,9 +7,9 @@ defaults:
   - transforms: oxe_no_remapping # oxe_to_calvin
   - language_encoders: clip # clip # no_encoder
 
-DATA_NAME: real_kitchen_lang # libero_all # simpler_env # joint_mix # real_kitchen_mix # bridge # rtx # oxe_magic_soup # oxe_magic_soup_lang_only # small_test # finetune_data
+DATA_NAME: simulation_all # libero_all # simpler_env # joint_mix # real_kitchen_mix # bridge # rtx # oxe_magic_soup # oxe_magic_soup_lang_only # small_test # finetune_data
 DATA_PATH: gs://gresearch/robotics # "/home/marcelr/tensorflow_datasets" # "gs://gresearch/robotics"
-load_camera_views: ["primary", "secondary"] # ["primary", "wrist"]
+load_camera_views: ["primary", "secondary", "wrist"] # ["primary", "wrist"]
 # dataset_size_limit: 1000
 action_proprio_normalization_type: bounds # bounds # normal
 
@@ -19,7 +19,7 @@ interleaved_dataset_cfg:
   # batch_size: None
   balance_weights: True
   traj_transform_kwargs:
-    goal_relabeling_strategy: "bound_uniform_and_future" # "uniform_and_future" # "uniform"
+    goal_relabeling_strategy: null # "uniform_and_future" # "uniform"
     goal_relabeling_kwargs:
         min_bound: 20
         max_bound: 50
@@ -28,7 +28,7 @@ interleaved_dataset_cfg:
     action_horizon: 10
     # max_action_dim: 16 # adds padding to actions with less dimension (for joint_mix: [#joints] + [#gripper])
     # subsample_length: 100
-    # skip_unlabeled: True
+    skip_unlabeled: True
     # task_augment_strategy: "rephrase_lupus"
 
   frame_transform_kwargs:
