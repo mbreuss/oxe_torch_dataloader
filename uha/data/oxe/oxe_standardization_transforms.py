@@ -23,6 +23,12 @@ from uha.data.utils.data_utils import (
     relabel_actions,
 )
 
+def add_robot_information(robot_name, action_space, number_arms):
+    if(number_arms > 1):
+        return "A {robot_name} robot with {number_arms} arms controlled by {action_space} actions".format(robot_name=robot_name, number_arms=number_arms, action_space=action_space)
+    else:
+        return "A {robot_name} robot with {number_arms} arm controlled by {action_space} actions".format(robot_name=robot_name, number_arms=number_arms, action_space=action_space)
+
 
 def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # marcel's?
@@ -37,6 +43,7 @@ def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory = relabel_actions(trajectory)
 
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
     return trajectory
 
 
@@ -56,6 +63,7 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=1
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -74,6 +82,7 @@ def kit_irl_dataset_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
         ),
         axis=1
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta joint", 1)
     return trajectory
 
 
@@ -92,6 +101,7 @@ def kit_irl_dataset_abs_joint_transform(trajectory: Dict[str, Any]) -> Dict[str,
         ),
         axis=1
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     return trajectory
 
 
@@ -111,6 +121,7 @@ def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=1
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute end-effector", 1)
     return trajectory
 
 
@@ -129,6 +140,7 @@ def droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=1
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     return trajectory
 
 
@@ -144,6 +156,7 @@ def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     trajectory = relabel_actions(trajectory)
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
     return trajectory
 
 
@@ -170,6 +183,7 @@ def rt1_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
+    trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
     return trajectory
 
 
@@ -206,6 +220,7 @@ def kuka_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
     return trajectory
 
 
@@ -231,6 +246,7 @@ def taco_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -253,6 +269,7 @@ def jaco_play_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
+    trajectory["observation"]["robot_information"] = add_robot_information("Jaco 2", "delta end-effector", 1)
     return trajectory
 
 
@@ -271,6 +288,7 @@ def berkeley_cable_routing_dataset_transform(
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -295,6 +313,7 @@ def roboturk_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
     return trajectory
 
 
@@ -318,6 +337,7 @@ def nyu_door_opening_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, 
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
     return trajectory
 
 
@@ -345,6 +365,7 @@ def viola_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -373,6 +394,7 @@ def berkeley_autolab_ur5_dataset_transform(
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
+    trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
     return trajectory
 
 
@@ -389,6 +411,7 @@ def toto_dataset_transform_eef(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -406,6 +429,7 @@ def toto_dataset_transform_joint(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     traj_truncated["language_instruction"] = tf.fill(
         tf.shape(traj_truncated["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     return traj_truncated
 
 
@@ -432,6 +456,7 @@ def language_table_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
     trajectory["language_instruction"] = tf.strings.split(instruction_encoded, "\x00")[
         :, :1
     ].to_tensor()[:, 0]
+    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     return trajectory
 
 
@@ -448,6 +473,7 @@ def pusht_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
+    trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
     return trajectory
 
 
@@ -472,12 +498,14 @@ def stanford_kuka_multimodal_dataset_transform(
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
     return trajectory
 
 
 def nyu_rot_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :7]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     return trajectory
 
 
@@ -501,6 +529,7 @@ def stanford_hydra_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -519,6 +548,7 @@ def austin_buds_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -541,6 +571,7 @@ def nyu_franka_play_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -552,6 +583,7 @@ def maniskill_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -576,6 +608,7 @@ def furniture_bench_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -587,12 +620,14 @@ def cmu_franka_exploration_dataset_transform(
     trajectory["observation"]["proprio"] = tf.zeros(
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
 def ucsd_kitchen_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, :7]
+    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     return trajectory
 
 
@@ -606,6 +641,7 @@ def ucsd_pick_place_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     return trajectory
 
 
@@ -624,6 +660,7 @@ def austin_sailor_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -642,6 +679,7 @@ def austin_sirius_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -667,6 +705,7 @@ def bc_z_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
+    trajectory["observation"]["robot_information"] = add_robot_information("Google Robot", "delta end-effector", 1)
     return trajectory
 
 
@@ -675,6 +714,7 @@ def tokyo_pr2_opening_fridge_dataset_transform(
 ) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("PR2", "delta end-effector", 1)
     return trajectory
 
 
@@ -683,12 +723,14 @@ def tokyo_pr2_tabletop_manipulation_dataset_transform(
 ) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("PR2", "delta end-effector", 1)
     return trajectory
 
 
 def utokyo_xarm_pick_place_dataset_transform(
     trajectory: Dict[str, Any]
 ) -> Dict[str, Any]:
+    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     return trajectory
 
 
@@ -699,6 +741,7 @@ def utokyo_xarm_bimanual_dataset_transform(
     trajectory["observation"]["proprio"] = trajectory["observation"][
         "end_effector_pose"
     ]
+    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 2)
     return trajectory
 
 
@@ -718,6 +761,7 @@ def robo_net_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
             trajectory["observation"]["state"][:, -1:],
         ),
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Multi-Robot", "delta end-effector", 1)
     return trajectory
 
 
@@ -739,6 +783,7 @@ def berkeley_mvp_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
         ],
         axis=1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "absolute joint", 1)
 
     return trajectory
 
@@ -768,6 +813,7 @@ def berkeley_rpt_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
         [joint_actions, invert_gripper_actions(trajectory["action"][:-1, -1:])],
         axis=1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
 
     return traj_truncated
 
@@ -783,6 +829,7 @@ def kaist_nonprehensible_dataset_transform(
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, -7:]
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -803,6 +850,7 @@ def stanford_mask_vit_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str,
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
     return trajectory
 
 
@@ -819,11 +867,13 @@ def tokyo_lsmo_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 def dlr_sara_pour_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("DLR SARA", "delta end-effector", 1)
     return trajectory
 
 
 def dlr_sara_grid_clamp_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, :6]
+    trajectory["observation"]["robot_information"] = add_robot_information("DLR SARA", "delta end-effector", 1)
     return trajectory
 
 
@@ -839,6 +889,7 @@ def dlr_edan_shared_control_dataset_transform(
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("DLR EDAN", "delta end-effector", 1)
     return trajectory
 
 
@@ -850,11 +901,13 @@ def asu_table_top_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
     return trajectory
 
 
 def robocook_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -864,6 +917,7 @@ def imperial_wristcam_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str,
     trajectory["observation"]["proprio"] = tf.zeros(
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
     return trajectory
 
 
@@ -885,6 +939,7 @@ def iamlab_pick_insert_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -901,6 +956,7 @@ def uiuc_d3field_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     trajectory["observation"]["proprio"] = tf.zeros(
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Kinova Gen3", "delta end-effector", 1)
     return trajectory
 
 
@@ -919,6 +975,7 @@ def utaustin_mutex_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
+    trajectory["observation"]["robot_information"] = add_robot_information("PAMY2", "delta end-effector", 1)
     return trajectory
 
 
@@ -938,6 +995,7 @@ def berkeley_fanuc_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Fanuc Mate", "delta end-effector", 1)
     return trajectory
 
 
@@ -955,6 +1013,7 @@ def cmu_playing_with_food_dataset_transform(
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -967,6 +1026,7 @@ def playfusion_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
@@ -980,6 +1040,7 @@ def cmu_stretch_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
     return trajectory
 
 
@@ -1029,6 +1090,7 @@ def aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory = tf.nest.map_structure(lambda x: x[::factor], trajectory)
 
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
     return trajectory
 
 
@@ -1041,12 +1103,14 @@ def fmb_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 
 def dobbe_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # every input feature is batched, ie has leading batch dimension
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
     return trajectory
 
 
@@ -1066,6 +1130,7 @@ def roboset_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     return trajectory
 
 
@@ -1109,6 +1174,7 @@ def libero_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     trajectory["observation"]["EEF_state"] = trajectory["observation"]["state"][:, :6]
     trajectory["observation"]["gripper_state"] = trajectory["observation"]["state"][:, -2:]  # 2D gripper state
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     return trajectory
 
 

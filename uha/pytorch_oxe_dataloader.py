@@ -33,6 +33,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         self._add_empty_key = transform_dict["add_empty_key"] if transform_dict is not None and "add_empty_key" in transform_dict else []
         self._adjust_type = transform_dict["adjust_type"] if transform_dict is not None and "adjust_type" in transform_dict else None
         self._bytes_to_string = transform_dict["bytes_to_string"] if transform_dict is not None and "bytes_to_string" in transform_dict else True
+        self._add_robot_information = transform_dict["add_robot_information"] if transform_dict is not None and "add_robot_information" in transform_dict else False
 
     def __iter__(self):
         for sample in self._rlds_dataset.iterator(prefetch=2048): # batchsize
@@ -112,6 +113,13 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
                 else:
                     sample["task"]["language_instruction"] = self._language_encoder("")
+
+        if self._add_robot_information:
+            if sample["observation"]["robot_information"]:
+                sample["observation"]["robot_information"] = self._language_encoder(sample["observation"]["robot_information"])
+        else:
+            if sample["observation"]["robot_information"]:
+                del sample["observation"]["robot_information"]
 
         return sample
     
