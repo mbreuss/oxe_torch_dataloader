@@ -114,11 +114,10 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 else:
                     sample["task"]["language_instruction"] = self._language_encoder("")
 
-        if self._add_robot_information:
-            if sample["observation"]["robot_information"]:
+        if "robot_information" in sample["observation"]:
+            if self._add_robot_information:
                 sample["observation"]["robot_information"] = self._language_encoder(sample["observation"]["robot_information"])
-        else:
-            if sample["observation"]["robot_information"]:
+            else:
                 del sample["observation"]["robot_information"]
 
         return sample

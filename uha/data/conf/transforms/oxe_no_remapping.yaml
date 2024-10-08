@@ -5,3 +5,4 @@
 move_axis: False
 bytes_to_string: True
 adjust_type: null # torch.float32 # null # torch.float16
+add_robot_information: False
