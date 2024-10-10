@@ -285,6 +285,17 @@ SIMPLER_LIBERO_ALL = [
   ("fractal20220817_data", 1.0),
 ]
 
+MO_ALL = [
+  ("libero_spatial_no_noops", 8.0),
+  ("libero_object_no_noops", 8.0),
+  ("libero_goal_no_noops", 8.0),
+  ("libero_10_no_noops", 8.0),
+  ("bridge_dataset", 1.0),
+  ("fractal20220817_data", 1.0),
+  # ("robo_set", 0.5),
+  # ("droid", 0.04),
+]
+
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
     "simpler_env": SIMPLER_ENV,
@@ -314,4 +325,5 @@ OXE_NAMED_MIXES = {
     "small_test": SMALL_TEST_SET,
     "libero_all": LIBERO_ALL,
     "simulation_all": SIMPLER_LIBERO_ALL,
+    "mo_all": MO_ALL,
 }

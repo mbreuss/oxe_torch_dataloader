@@ -13,9 +13,9 @@ step = {
 """
 
 from typing import Any, Dict
-
+from enum import Enum
 import tensorflow as tf
-
+import numpy as np
 
 from uha.data.utils.data_utils import (
     binarize_gripper_actions,
@@ -25,6 +25,117 @@ from uha.data.utils.data_utils import (
 )
 
 import tensorflow as tf
+
+
+class NormalizationType(Enum):
+    NORMAL = 1
+    BOUNDS = 2
+
+
+def create_action_normalization_mask(robot_type, control_mode='position'):
+    mask = [False] * 76
+    
+    if control_mode == 'position':
+        start_idx = 0
+    elif control_mode == 'velocity':
+        start_idx = 38
+    else:
+        raise ValueError(f"Unsupported control mode: {control_mode}")
+    
+    if robot_type == "EEF_POS":
+        mask[start_idx:start_idx+6] = [True] * 6
+        mask[start_idx+13] = False  # gripper
+    elif robot_type == "JOINT_POS":
+        mask[start_idx+6:start_idx+13] = [True] * 7
+        mask[start_idx+13] = False  # gripper
+    elif robot_type == "JOINT_POS_BIMANUAL":
+        mask[start_idx+6:start_idx+13] = [True] * 7
+        mask[start_idx+20:start_idx+27] = [True] * 7
+        mask[start_idx+13] = False  # left gripper
+        mask[start_idx+27] = False  # right gripper
+    else:
+        raise ValueError(f"Unsupported robot type: {robot_type}")
+    
+    return mask
+
+def create_sparse_unified_action(action, robot_type, control_mode='position'):
+    if action is None:
+        return tf.sparse.SparseTensor(indices=[[0, 0]], values=[0.0], dense_shape=[1, 76]), None
+    
+    batch_size = tf.shape(action)[0]
+    
+    if control_mode == 'position':
+        start_idx = 0
+    elif control_mode == 'velocity':
+        start_idx = 38
+    else:
+        raise ValueError(f"Unsupported control mode: {control_mode}")
+    
+    indices = []
+    values = []
+    
+    if robot_type == "EEF_POS":
+        indices.extend([(i, start_idx + j) for i in range(batch_size) for j in range(6)])
+        values.extend(tf.reshape(action[:, :6], [-1]))
+        indices.extend([(i, start_idx + 13) for i in range(batch_size)])
+        values.extend(action[:, -1])
+    elif robot_type == "JOINT_POS":
+        indices.extend([(i, start_idx + 6 + j) for i in range(batch_size) for j in range(7)])
+        values.extend(tf.reshape(action[:, :7], [-1]))
+        indices.extend([(i, start_idx + 13) for i in range(batch_size)])
+        values.extend(action[:, -1])
+    elif robot_type == "JOINT_POS_BIMANUAL":
+        indices.extend([(i, start_idx + 6 + j) for i in range(batch_size) for j in range(7)])
+        indices.extend([(i, start_idx + 20 + j) for i in range(batch_size) for j in range(7)])
+        values.extend(tf.reshape(action[:, :14], [-1]))
+        indices.extend([(i, start_idx + 13) for i in range(batch_size)])
+        indices.extend([(i, start_idx + 27) for i in range(batch_size)])
+        values.extend(tf.reshape(action[:, 14:], [-1]))
+    else:
+        raise ValueError(f"Unsupported robot type: {robot_type}")
+    
+    return tf.sparse.SparseTensor(indices=indices, values=values, dense_shape=[batch_size, 76]), action
+
+def normalize_sparse_unified_action(action, stats, mask):
+    if stats['type'] == NormalizationType.NORMAL:
+        mean = tf.constant(stats['mean'], dtype=tf.float32)
+        std = tf.constant(stats['std'], dtype=tf.float32)
+        normalized_values = (action.values - tf.gather(mean, action.indices[:, 1])) / (tf.gather(std, action.indices[:, 1]) + 1e-8)
+    elif stats['type'] == NormalizationType.BOUNDS:
+        min_val = tf.constant(stats['min'], dtype=tf.float32)
+        max_val = tf.constant(stats['max'], dtype=tf.float32)
+        normalized_values = 2 * (action.values - tf.gather(min_val, action.indices[:, 1])) / (tf.gather(max_val - min_val, action.indices[:, 1]) + 1e-8) - 1
+    
+    return tf.sparse.SparseTensor(indices=action.indices, values=normalized_values, dense_shape=action.dense_shape)
+
+def compute_dataset_statistics(dataset, action_normalization_mask):
+    action_stats = {
+        'mean': np.zeros(76),
+        'std': np.ones(76),
+        'min': np.zeros(76),
+        'max': np.ones(76),
+    }
+    
+    normalized_dims = [i for i, m in enumerate(action_normalization_mask) if m]
+    
+    actions = []
+    for traj in dataset:
+        actions.append(tf.sparse.to_dense(traj['action'])[:, normalized_dims])
+    
+    actions = np.concatenate(actions, axis=0)
+    
+    action_stats['mean'][normalized_dims] = np.mean(actions, axis=0)
+    action_stats['std'][normalized_dims] = np.std(actions, axis=0)
+    action_stats['min'][normalized_dims] = np.min(actions, axis=0)
+    action_stats['max'][normalized_dims] = np.max(actions, axis=0)
+    
+    return action_stats
+
+def sparse_to_dense_action(sparse_action):
+    return tf.sparse.to_dense(sparse_action)
+
+def dense_to_sparse_action(dense_action, robot_type, control_mode='position'):
+    return create_sparse_unified_action(dense_action, robot_type, control_mode)[0]
 
 
 def get_action_space_index(robot_type, num_arms, control_mode='position'):
