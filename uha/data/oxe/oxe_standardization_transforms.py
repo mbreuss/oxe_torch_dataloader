@@ -56,13 +56,14 @@ def create_action_normalization_mask(robot_type, control_mode='position'):
     else:
         raise ValueError(f"Unsupported robot type: {robot_type}")
     
-    return mask
+    return tf.constant(mask, dtype=tf.bool)
+
 
 def create_sparse_unified_action(action, robot_type, control_mode='position'):
     if action is None:
         return tf.sparse.SparseTensor(indices=[[0, 0]], values=[0.0], dense_shape=[1, 76]), None
     
-    batch_size = tf.shape(action)[0]
+    batch_size = tf.get_static_value(tf.shape(action)[0])
     
     if control_mode == 'position':
         start_idx = 0
@@ -108,7 +109,7 @@ def normalize_sparse_unified_action(action, stats, mask):
     
     return tf.sparse.SparseTensor(indices=action.indices, values=normalized_values, dense_shape=action.dense_shape)
 
-def compute_dataset_statistics(dataset, action_normalization_mask):
+'''def compute_dataset_statistics(dataset, action_normalization_mask):
     action_stats = {
         'mean': np.zeros(76),
         'std': np.ones(76),
@@ -129,7 +130,7 @@ def compute_dataset_statistics(dataset, action_normalization_mask):
     action_stats['min'][normalized_dims] = np.min(actions, axis=0)
     action_stats['max'][normalized_dims] = np.max(actions, axis=0)
     
-    return action_stats
+    return action_stats'''
 
 def sparse_to_dense_action(sparse_action):
     return tf.sparse.to_dense(sparse_action)
@@ -163,11 +164,24 @@ def get_action_space_index(robot_type, num_arms, control_mode='position'):
     return tf.constant(index, dtype=tf.int32)
 
 
-def create_unified_action_vector(action, robot_type, control_mode='position'):
+def create_unified_action_vector(action, robot_type, control_mode='position', stats=None):
     if action is None:
         return tf.zeros((1, 76), dtype=tf.float32), None
     
-    batch_size = tf.shape(action)[0]
+    # Ensure action is at least 2D
+    action = tf.convert_to_tensor(action)
+    action_shape = tf.shape(action)
+    if len(action.shape) == 1:
+        action = tf.expand_dims(action, 0)
+    # Extract batch_size from the action tensor
+    if len(action_shape) == 2:
+        batch_size = action_shape[0]
+    elif len(action_shape) == 3:
+        batch_size = action_shape[0] * action_shape[1]
+        action = tf.reshape(action, [batch_size, action_shape[-1]])
+    else:
+        raise ValueError(f"Unexpected action shape: {action_shape}")
+
     unified_action = tf.zeros((batch_size, 76), dtype=tf.float32)
     
     if control_mode == 'position':
@@ -178,48 +192,102 @@ def create_unified_action_vector(action, robot_type, control_mode='position'):
         raise ValueError(f"Unsupported control mode: {control_mode}")
     
     if robot_type == "EEF_POS":
+        # Handling indices for the first 6 elements (EEF positions)
         indices = tf.stack([
             tf.repeat(tf.range(batch_size), 6),
-            tf.tile(tf.range(start_idx, start_idx + 6), [batch_size]) 
+            tf.tile(tf.range(start_idx, start_idx + 6), [batch_size])
         ], axis=1)
         updates = tf.reshape(action[:, :6], [-1])
         unified_action = tf.tensor_scatter_nd_update(unified_action, indices, updates)
         
+        # Handling the gripper action (7th element)
         gripper_indices = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 13)], axis=1)
-        unified_action = tf.tensor_scatter_nd_update(unified_action, gripper_indices, action[:, -1])
+        
+        # Expand gripper_updates to shape (batch_size, 1) 
+        # gripper_updates = tf.expand_dims(action[:, -1], axis=-1)
+        print('---------------------')
+        print(action.shape)
+        print('---------------------')
+        gripper_updates = action[:, -1]
+        # Update the gripper action in the unified action vector
+        unified_action = tf.tensor_scatter_nd_update(unified_action, gripper_indices, gripper_updates)
+
         
     elif robot_type == "JOINT_POS":
+        # Handling indices for the first 7 elements (joint positions)
         indices = tf.stack([
             tf.repeat(tf.range(batch_size), 7),
-            tf.tile(tf.range(start_idx + 6, start_idx + 13), [batch_size]) 
+            tf.tile(tf.range(start_idx + 6, start_idx + 13), [batch_size])
         ], axis=1)
         updates = tf.reshape(action[:, :7], [-1])
         unified_action = tf.tensor_scatter_nd_update(unified_action, indices, updates)
         
+        # Handling the gripper action (8th element)
         gripper_indices = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 13)], axis=1)
-        unified_action = tf.tensor_scatter_nd_update(unified_action, gripper_indices, action[:, -1])
+        
+        # Use action[:, -1] directly
+        gripper_updates = tf.expand_dims(action[:, -1], axis=-1)
+        
+        # Update the gripper action in the unified action vector
+        unified_action = tf.tensor_scatter_nd_update(unified_action, gripper_indices, gripper_updates)
+
+        # Use tf.shape to get the batch size and reshape dynamically
+        batch_size_dynamic = tf.shape(unified_action)[0]
+        unified_action = tf.reshape(unified_action, [batch_size_dynamic, 76])
         
     elif robot_type == "JOINT_POS_BIMANUAL":
+        # Handling indices for the first 14 elements (joint positions for both arms)
         indices1 = tf.stack([
             tf.repeat(tf.range(batch_size), 7),
-            tf.tile(tf.range(start_idx + 6, start_idx + 13), [batch_size]) 
+            tf.tile(tf.range(start_idx + 6, start_idx + 13), [batch_size])
         ], axis=1)
         indices2 = tf.stack([
             tf.repeat(tf.range(batch_size), 7),
-            tf.tile(tf.range(start_idx + 20, start_idx + 27), [batch_size]) 
+            tf.tile(tf.range(start_idx + 20, start_idx + 27), [batch_size])
         ], axis=1)
         updates = tf.reshape(action[:, :14], [-1])
         unified_action = tf.tensor_scatter_nd_update(unified_action, tf.concat([indices1, indices2], axis=0), updates)
         
+        # Handling the gripper actions (15th and 16th elements)
         gripper_indices1 = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 13)], axis=1)
         gripper_indices2 = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 27)], axis=1)
-        unified_action = tf.tensor_scatter_nd_update(unified_action, 
-                                                     tf.concat([gripper_indices1, gripper_indices2], axis=0),
-                                                     tf.reshape(action[:, 14:], [-1]))
+        
+        # Use action[:, 14:16] directly
+        gripper_updates = tf.reshape(action[:, 14:16], [-1])  # Shape (None * 2,)
+        
+        # Update the gripper actions in the unified action vector
+        unified_action = tf.tensor_scatter_nd_update(unified_action,
+                                                    tf.concat([gripper_indices1, gripper_indices2], axis=0),
+                                                    gripper_updates)
+
+        # Use tf.shape to get the batch size and reshape dynamically
+        batch_size_dynamic = tf.shape(unified_action)[0]
+        unified_action = tf.reshape(unified_action, [batch_size_dynamic, 76])
     else:
         raise ValueError(f"Unsupported robot type: {robot_type}")
     
+    # Ensure unified_action has shape (None, 76)
+    # unified_action = tf.ensure_shape(unified_action, [batch_size, 76])
+    
+    # Optionally normalize if stats are available
+    # if stats is not None:
+    #    unified_action = normalize_unified_action(unified_action, stats)
+    
     return unified_action, action
+
+
+
+def apply_unified_action_vector(trajectory, robot_type, control_mode='position', stats=None):
+    print("Action shape:", tf.shape(trajectory['action']))
+    print(robot_type, control_mode)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], robot_type, control_mode, stats)
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index(robot_type, 1, control_mode)
+    print(trajectory['action'])
+    return trajectory
+
 
 
 def add_robot_information(robot_name, action_space, number_arms):
@@ -257,8 +325,51 @@ def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory['unified_action'] = unified_action
     trajectory['original_action'] = original_action
     trajectory['action'] = unified_action
+    trajectory['action'] = temp_dict['action']
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
+
+
+def compute_dataset_statistics(dataset, action_normalization_mask):
+    action_stats = {
+        'mean': tf.zeros(76, dtype=tf.float32),
+        'std': tf.ones(76, dtype=tf.float32),
+        'min': tf.zeros(76, dtype=tf.float32),
+        'max': tf.ones(76, dtype=tf.float32),
+    }
+    
+    normalized_dims = tf.where(action_normalization_mask)[:, 0]
+    
+    def accumulate_stats(acc, traj):
+        action = tf.gather(traj['action'], normalized_dims, axis=1)
+        acc['sum'] += tf.reduce_sum(action, axis=0)
+        acc['sum_squared'] += tf.reduce_sum(tf.square(action), axis=0)
+        acc['min'] = tf.minimum(acc['min'], tf.reduce_min(action, axis=0))
+        acc['max'] = tf.maximum(acc['max'], tf.reduce_max(action, axis=0))
+        acc['count'] += tf.shape(action)[0]
+        return acc
+    
+    initial_acc = {
+        'sum': tf.zeros(tf.shape(normalized_dims), dtype=tf.float32),
+        'sum_squared': tf.zeros(tf.shape(normalized_dims), dtype=tf.float32),
+        'min': tf.fill(tf.shape(normalized_dims), tf.float32.max),
+        'max': tf.fill(tf.shape(normalized_dims), tf.float32.min),
+        'count': 0
+    }
+    
+    accumulated = dataset.reduce(initial_acc, accumulate_stats)
+    
+    count = tf.cast(accumulated['count'], tf.float32)
+    mean = accumulated['sum'] / count
+    variance = (accumulated['sum_squared'] / count) - tf.square(mean)
+    std = tf.sqrt(tf.maximum(variance, 0))
+    
+    action_stats['mean'] = tf.tensor_scatter_nd_update(action_stats['mean'], tf.expand_dims(normalized_dims, 1), mean)
+    action_stats['std'] = tf.tensor_scatter_nd_update(action_stats['std'], tf.expand_dims(normalized_dims, 1), std)
+    action_stats['min'] = tf.tensor_scatter_nd_update(action_stats['min'], tf.expand_dims(normalized_dims, 1), accumulated['min'])
+    action_stats['max'] = tf.tensor_scatter_nd_update(action_stats['max'], tf.expand_dims(normalized_dims, 1), accumulated['max'])
+    
+    return {k: v.numpy() for k, v in action_stats.items()}
 
 
 def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
@@ -402,7 +513,7 @@ def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     
     unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
     trajectory['unified_action'] = unified_action
-    trajectory['original_action'] = original_action 
+    trajectory['original_action'] = original_action
 
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
@@ -426,8 +537,8 @@ def rt1_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
     trajectory['unified_action'] = unified_action
-    trajectory['original_action'] = original_action 
-
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["base_pose_tool_reached"],
@@ -439,9 +550,6 @@ def rt1_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         "natural_language_instruction"
     ]
     trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
-    trajectory['unified_action'] = unified_action
-    trajectory['original_action'] = original_action
-    trajectory['action'] = unified_action
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
@@ -1743,10 +1851,10 @@ def libero_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["EEF_state"] = trajectory["observation"]["state"][:, :6]
     trajectory["observation"]["gripper_state"] = trajectory["observation"]["state"][:, -2:]  # 2D gripper state
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
     unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
     trajectory['unified_action'] = unified_action
     trajectory['original_action'] = original_action  # Keep the original action for normalization
-    
     trajectory['action'] = unified_action
 
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')

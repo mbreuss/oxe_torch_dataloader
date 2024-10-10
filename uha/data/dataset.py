@@ -14,10 +14,15 @@ from uha.data.utils.data_utils import (
     allocate_threads,
     get_dataset_statistics,
     NormalizationType,
-    normalize_action_and_proprio,
     pprint_data_mixture,
+    normalize_action_and_proprio,
     sample_match_keys_uniform,
     tree_map,
+)
+from uha.data.oxe.oxe_standardization_transforms import (
+    create_action_normalization_mask, 
+    apply_unified_action_vector,
+    compute_dataset_statistics,
 )
 from uha.data.utils.spec import ModuleSpec
 
@@ -318,6 +323,8 @@ def make_dataset_from_rlds(
     num_parallel_reads: int = tf.data.AUTOTUNE,
     num_parallel_calls: int = tf.data.AUTOTUNE,
     dataset_size_limit: int = None,
+    use_unified_action: bool = False,
+    unified_action_dim: int = 76,
 ) -> Tuple[dl.DLataset, dict]:
     """This function is responsible for loading a specific RLDS dataset from storage and getting it into a
     standardized format. Yields a dataset of trajectories. Does not include CPU-intensive operations.
@@ -561,6 +568,7 @@ def make_dataset_from_rlds(
             save_dir=builder.data_dir,
             force_recompute=force_recompute_dataset_statistics,
         )
+        print(dataset_statistics)
     dataset_statistics = tree_map(np.array, dataset_statistics)
 
     # skip normalization for certain action dimensions
@@ -673,29 +681,6 @@ def make_interleaved_dataset(
     traj_transform_threads: Optional[int] = None,
     traj_read_threads: Optional[int] = None,
 ) -> dl.DLataset:
-    """Creates an interleaved dataset from list of dataset kwargs. Returns a dataset of batched frames.
-
-    Args:
-        dataset_kwargs_list: list of kwargs, each element of which is passed to `make_dataset_from_rlds`.
-            "num_parallel_calls" and "num_parallel_reads" are overidden using `traj_transform_threads` and
-            `traj_read_threads`, respectively.
-        sample_weights: sampling weights for each dataset in list. If None, defaults to uniform.
-        train: whether this is a training or validation dataset.
-        shuffle_buffer_size: size of the dataset shuffle buffer (in number of frames).
-        traj_transform_kwargs: kwargs passed to `apply_trajectory_transforms`. "num_parallel_calls" is
-            overidden using `traj_transform_threads`.
-        frame_transform_kwargs: kwargs passed to `apply_frame_transforms`.
-        batch_size: batch size, if not provided output is not batched.
-        balance_weights: if True, the sample weights are multiplied by the number of frames in each dataset.
-            This makes it so that, if all the sample weights are equal, one full iteration through the interleaved
-            dataset will correspond to one full iteration through each individual dataset (only in expectation,
-            since in practice the sampling is random).
-        traj_transform_threads: total number of parallel calls for trajectory transforms, distributed across
-            datasets according to their sampling weights. If None, defaults to AUTOTUNE for every dataset.
-        traj_read_threads: total number of parallel read workers for trajectory transforms, distributed across
-            datasets according to their sampling weights. If None, defaults to AUTOTUNE for every dataset.
-    """
-    # default to uniform sampling
     if not sample_weights:
         sample_weights = [1.0] * len(dataset_kwargs_list)
     if len(sample_weights) != len(dataset_kwargs_list):
@@ -703,44 +688,50 @@ def make_interleaved_dataset(
             f"sample_weights must be None or have length {len(dataset_kwargs_list)}."
         )
 
-    # go through datasets once to get sizes
     dataset_sizes = []
     all_dataset_statistics = {}
     for dataset_kwargs in dataset_kwargs_list:
-        _, dataset_statistics = make_dataset_from_rlds(**dataset_kwargs, train=train)
+        # Remove action_space_index from kwargs if present
+        action_space_index = dataset_kwargs.pop('action_space_index', None)
+        
+        dataset, dataset_statistics = make_dataset_from_rlds(**dataset_kwargs, train=train)
         dataset_sizes.append(dataset_statistics["num_transitions"])
         assert (
             dataset_kwargs["name"] not in all_dataset_statistics
         ), f"Duplicate name {dataset_kwargs['name']}"
+        
+        robot_type = dataset_kwargs.get("robot_type", "EEF_POS")
+        control_mode = dataset_kwargs.get("control_mode", "position")
+        action_normalization_mask = create_action_normalization_mask(robot_type, control_mode)
+        unified_action_stats = compute_dataset_statistics(dataset, action_normalization_mask)
+        dataset_statistics["unified_action_stats"] = unified_action_stats
+        dataset_statistics["action_space_index"] = action_space_index
         all_dataset_statistics[dataset_kwargs["name"]] = dataset_statistics
 
-    # Get the indices of the "primary" datasets (i.e., datasets with sample_weight >= 1.0)
     primary_dataset_indices = np.array([idx for idx in range(len(sample_weights)) if sample_weights[idx] >= 1.0])
 
-    # balance and normalize weights
     if balance_weights:
         sample_weights = np.array(sample_weights) * np.array(dataset_sizes)
     sample_weights = np.array(sample_weights) / np.sum(sample_weights)
     pprint_data_mixture(dataset_kwargs_list, sample_weights)
 
-    # Effective Dataset Length = Number of samples until each dataset has completed at least one epoch
-    #   =>> Note :: Only counting the "primary" datasets (i.e., datasets with sample_weight >= 1.0)
     dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
 
-    # allocate threads based on weights
     threads_per_dataset = allocate_threads(traj_transform_threads, sample_weights)
     reads_per_dataset = allocate_threads(traj_read_threads, sample_weights)
 
     logging.info("Threads per dataset: %s", threads_per_dataset)
     logging.info("Reads per dataset: %s", reads_per_dataset)
 
-    # construct datasets
     datasets = []
     for dataset_kwargs, threads, reads in zip(
         dataset_kwargs_list,
         threads_per_dataset,
         reads_per_dataset,
     ):
+        # Remove action_space_index from kwargs if present
+        dataset_kwargs.pop('action_space_index', None)
+        
         dataset, _ = make_dataset_from_rlds(
             **dataset_kwargs,
             train=train,
@@ -754,26 +745,31 @@ def make_interleaved_dataset(
             num_parallel_calls=threads,
             train=train,
         ).flatten(num_parallel_calls=threads)
+        
+        '''dataset = dataset.map(
+            lambda x: apply_unified_action_vector(
+                x,
+                dataset_kwargs.get("robot_type", "EEF_POS"),
+                dataset_kwargs.get("control_mode", "position"),
+                all_dataset_statistics[dataset_kwargs["name"]]["unified_action_stats"]
+            ),
+            num_parallel_calls=threads
+        )'''
         datasets.append(dataset)
 
-    # interleave at the frame level and then shuffle
     dataset: dl.DLataset = dl.DLataset.sample_from_datasets(
         datasets, sample_weights
     ).shuffle(shuffle_buffer_size)
 
-    # apply frame transforms
     dataset = apply_frame_transforms(dataset, **frame_transform_kwargs, train=train)
 
-    # sequential batch (parallel batch seems to use much more memory)
     if batch_size is not None:
         dataset = dataset.batch(batch_size)
 
-    # this seems to reduce memory usage without affecting speed
     dataset = dataset.with_ram_budget(1)
 
     dataset = dataset.ignore_errors(log_warning=True)
 
-    # save for later
     dataset.dataset_statistics = all_dataset_statistics
     dataset.sample_weights = sample_weights
     dataset.dataset_len = dataset_len

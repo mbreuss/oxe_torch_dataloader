@@ -218,15 +218,17 @@ def get_dataset_statistics(
     hash_dependencies: Tuple[str, ...],
     save_dir: Optional[str] = None,
     force_recompute: bool = False,
+    unified_action_dim: int = 76
 ) -> dict:
     """Either computes the statistics of a dataset or loads them from a cache file if this function has been
     called before with the same `hash_dependencies`. Currently, the statistics include the min/max/mean/std of
-    the actions and proprio as well as the number of transitions and trajectories in the dataset.
+    the actions (assumed to be in unified format) and proprio as well as the number of transitions and trajectories in the dataset.
     """
     unique_hash = hashlib.sha256(
-        "".join(hash_dependencies).encode("utf-8"),
+        "".join(hash_dependencies + (str(unified_action_dim),)).encode("utf-8"),
         usedforsecurity=False,
     ).hexdigest()
+
 
     # fallback local path for when data_dir is not writable or not provided
     local_path = os.path.expanduser(
@@ -289,6 +291,7 @@ def get_dataset_statistics(
         num_transitions += traj["action"].shape[0]
         num_trajectories += 1
     actions = np.concatenate(actions)
+    
     metadata = {
         "action": {
             "mean": actions.mean(0).tolist(),
@@ -404,44 +407,57 @@ def get_non_zero_dims(tensor):
     non_zero_mask = tf.not_equal(tf.reduce_sum(tf.abs(tensor), axis=0), 0)
     return tensor_to_scalar(tf.reduce_sum(tf.cast(non_zero_mask, tf.int32)))
 
+
 def normalize_unified_action(x, metadata_key, metadata, normalization_type):
     try:
         x = tf.cast(x, tf.float32)
         
         # Log shapes and types for debugging
-        logging.debug(f"x shape: {x.shape}, type: {x.dtype}")
-        logging.debug(f"metadata[{metadata_key}]['p01'] shape: {metadata[metadata_key]['p01'].shape}, type: {metadata[metadata_key]['p01'].dtype}")
+        logging.info(f"Input x shape: {x.shape}, type: {type(x)}")
+        logging.info(f"metadata[{metadata_key}]['p01'] shape: {metadata[metadata_key]['p01'].shape}, type: {metadata[metadata_key]['p01'].dtype}")
         
-        # Determine the actual dimensions of non-zero elements
-        non_zero_dims = get_non_zero_dims(x)
-        logging.debug(f"non_zero_dims: {non_zero_dims}")
+        # Check if x is a SymbolicTensor
+        # Check if x is a SparseTensor
+        if isinstance(x, tf.SparseTensor):
+            # Get non-zero indices and values from the sparse tensor
+            non_zero_indices = x.indices
+            non_zero_values = x.values
+        else:
+            # If x is a dense tensor, treat all values as non-zero
+            non_zero_indices = tf.where(tf.not_equal(x, 0))
+            non_zero_values = tf.gather_nd(x, non_zero_indices)
+        
+        # Log non-zero indices and values before normalization
+        logging.info(f"Non-zero indices before normalization: {non_zero_indices}")
+        logging.info(f"Non-zero values before normalization: {non_zero_values}")
         
         # Ensure metadata tensors are the right shape
         metadata_p01 = tf.cast(metadata[metadata_key]['p01'], tf.float32)
         metadata_p99 = tf.cast(metadata[metadata_key]['p99'], tf.float32)
         
-        if metadata_p01.shape[0] < non_zero_dims:
-            logging.warning(f"Metadata shape {metadata_p01.shape[0]} is smaller than non_zero_dims {non_zero_dims}. Adjusting non_zero_dims.")
-            non_zero_dims = metadata_p01.shape[0]
-
-        # Slice the metadata tensors to match the actual dimensions
-        metadata_p01 = metadata_p01[:non_zero_dims]
-        metadata_p99 = metadata_p99[:non_zero_dims]
-
+        # Normalize only the non-zero values based on their indices
         if normalization_type == NormalizationType.NORMAL:
-            metadata_mean = tf.cast(metadata[metadata_key]['mean'][:non_zero_dims], tf.float32)
-            metadata_std = tf.cast(metadata[metadata_key]['std'][:non_zero_dims], tf.float32)
-            norm = (x[:, :non_zero_dims] - metadata_mean) / (metadata_std + 1e-8)
+            metadata_mean = tf.cast(metadata[metadata_key]['mean'], tf.float32)
+            metadata_std = tf.cast(metadata[metadata_key]['std'], tf.float32)
+            norm_values = (tf.gather(non_zero_values, non_zero_indices[:, -1]) - tf.gather(metadata_mean, non_zero_indices[:, -1])) / (tf.gather(metadata_std, non_zero_indices[:, -1]) + 1e-8)
         elif normalization_type == NormalizationType.BOUNDS:
-            norm = tf.clip_by_value(
-                2 * (x[:, :non_zero_dims] - metadata_p01) / (metadata_p99 - metadata_p01 + 1e-8) - 1,
+            norm_values = tf.clip_by_value(
+                2 * (tf.gather(non_zero_values, non_zero_indices[:, -1]) - tf.gather(metadata_p01, non_zero_indices[:, -1])) / (tf.gather(metadata_p99, non_zero_indices[:, -1]) - tf.gather(metadata_p01, non_zero_indices[:, -1]) + 1e-8) - 1,
                 -1, 1
             )
         else:
             raise ValueError(f"Unknown normalization type {normalization_type}")
 
-        # Combine normalized part with zero-padded part
-        return tf.concat([norm, tf.zeros_like(x[:, non_zero_dims:])], axis=1)
+        # Log normalized values
+        logging.info(f"Normalized values: {norm_values}")
+
+        # Create a new tensor with normalized values
+        normalized_x = tf.tensor_scatter_nd_update(tf.zeros_like(x), non_zero_indices, norm_values)
+
+        # Log the normalized tensor
+        logging.info(f"Normalized x: {normalized_x}")
+
+        return normalized_x
     except Exception as e:
         logging.error(f"Error in normalize_unified_action: {str(e)}")
         raise
