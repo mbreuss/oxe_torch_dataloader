@@ -20,3 +20,6 @@ key_remapping:
     pad_mask_dict: "language_instruction_pad_mask"
     
   current_index: "current_index"
+
+
+add_robot_information: True

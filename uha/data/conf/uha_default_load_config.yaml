@@ -14,7 +14,7 @@ load_camera_views: ["primary", "secondary", "wrist"] # ["primary", "wrist"]
 action_proprio_normalization_type: bounds # bounds # normal
 
 interleaved_dataset_cfg:
-  shuffle_buffer_size: 10000
+  shuffle_buffer_size: 1000
   # change to 500k for training, large shuffle buffers are important, but adjust to your RAM
   # batch_size: None
   balance_weights: True

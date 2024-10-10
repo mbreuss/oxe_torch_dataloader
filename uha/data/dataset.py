@@ -22,6 +22,42 @@ from uha.data.utils.data_utils import (
 from uha.data.utils.spec import ModuleSpec
 
 
+def convert_scalar_to_1d(tensor, reference_tensor=None):
+    """
+    Converts a scalar tensor (shape ()) to a 1D tensor with shape (None,).
+    If reference_tensor is provided, tile the scalar tensor to match the batch size.
+    """
+    if tf.rank(tensor) == 0:
+        tensor = tf.expand_dims(tensor, axis=0)  # Expand scalar to (1,)
+        tensor.set_shape([None])  # Set the shape to (None,)
+    
+    if reference_tensor is not None:
+        ref_shape = tf.shape(reference_tensor)
+        if tf.rank(tensor) == 1 and tf.shape(tensor)[0] == 1:
+            # Tile to match the batch size of reference_tensor
+            tensor = tf.tile(tensor, [ref_shape[0]])
+    
+    return tensor
+
+
+def ensure_shape_match(target_tensor, reference_tensor):
+    """
+    Ensures that the target tensor has the same shape as the reference tensor.
+    If the target tensor is a scalar, it will be expanded to match the batch size
+    of the reference tensor.
+    """
+    ref_shape = tf.shape(reference_tensor)
+    
+    if tf.rank(target_tensor) == 0:
+        target_tensor = convert_scalar_to_1d(target_tensor)
+    
+    # If target_tensor is 1D (like None,) we need to tile it to match reference's batch size
+    if tf.rank(target_tensor) == 1 and tf.shape(target_tensor)[0] == 1:
+        target_tensor = tf.tile(target_tensor, [ref_shape[0]])
+    
+    return target_tensor
+
+
 def apply_trajectory_transforms(
     dataset: dl.DLataset,
     *,
@@ -383,6 +419,7 @@ def make_dataset_from_rlds(
 
         # add timestep info
         new_obs["timestep"] = tf.range(traj_len)
+        # new_obs['robot_type'] = old_obs['robot_information']
 
         # extracts `language_key` into the "task" dict, or samples uniformly if `language_key` fnmatches multiple keys
         task = {}
@@ -419,7 +456,8 @@ def make_dataset_from_rlds(
             if language_key is not None:
                 task["language_instruction"] = sample_match_keys_uniform(traj, language_key)
 
-        logging.info(f"Local Lang Key: {local_lang_key}")
+        # print('--------------------------------------')
+        # logging.info(f"Local Lang Key: {local_lang_key}")
         if language_key is not None:
             # additional NILS stuff, doesn't affect normal language_instruction
             if local_lang_key == "ERROR":
@@ -434,11 +472,59 @@ def make_dataset_from_rlds(
                     f"Language key {local_lang_key} has dtype {task['language_instruction'].dtype}, "
                     "but it must be tf.string."
                 )
+        
+        # Use convert_scalar_to_1d to expand robot_information to match the batch size of language_instruction
+        try:
+            robot_info = old_obs['robot_information']
+            tf.debugging.assert_type(robot_info, tf.string, message="robot_information should be a string tensor")
+            tf.debugging.assert_rank(robot_info, 1, message="robot_information should be a 1D tensor")
+        except KeyError as e:
+            raise KeyError(f"Missing required robot information field: {e}")
+
+        # Use the robot_info tensor directly
+        robot_information = robot_info
+
+        # Tile the robot_information to match the batch size of language_instruction
+        traj_len = tf.shape(traj["action"])[0]
+        robot_information = tf.tile(robot_information, [traj_len])
+        
+        tf.debugging.assert_equal(tf.shape(robot_information)[0], traj_len, 
+                                message="robot_information shape should match trajectory length")
+        tf.debugging.assert_equal(tf.shape(task["language_instruction"])[0], traj_len, 
+                                message="language_instruction shape should match trajectory length")
+
+        # Add robot information to the task dictionary
+        try:
+            task['robot_information'] = robot_information
+            # print("Successfully added robot_information to task dict")
+        except Exception as e:
+            print(f"Error adding robot_information to task dict: {e}")
+            # Optionally, you can choose to continue without adding robot_information
+            # pass
+        try:
+            print(traj['action_space_index'])
+            task['action_space_index'] = tf.cast(convert_scalar_to_1d(traj['action_space_index'], task['robot_information']), tf.int32)
+            # print("Successfully added robot_information to task dict")
+        except Exception as e:
+            print(f"Error adding robot_information to task dict: {e}")
+        # print("Task dict keys after adding robot_information:", task.keys())
+        # print("Robot information in task dict shape:", tf.shape(task['robot_information']))
+
+        # Debug prints
+        # print('--------------------------------------')
+        # print(task["language_instruction"], task["language_instruction"].dtype, task["language_instruction"].shape)
+        # print(old_obs['robot_information'], old_obs['robot_information'].dtype, old_obs['robot_information'].shape)
+        # print(robot_information, robot_information.dtype, robot_information.shape)
+        # print(task['action_space_index'], task['action_space_index'].shape)
+        # print()
+         #print('##############################')
+
+        # Prepare the trajectory dictionary
         traj = {
             "observation": new_obs,
             "task": task,
             "action": tf.cast(traj["action"], tf.float32),
-            "dataset_name": tf.repeat(name, traj_len),
+            "dataset_name": tf.repeat(name, traj_len),  
         }
 
         return traj

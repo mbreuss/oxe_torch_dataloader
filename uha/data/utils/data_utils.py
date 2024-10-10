@@ -375,57 +375,113 @@ def combine_dataset_statistics(
     return combined_dataset_statistics
 
 
-def normalize_action_and_proprio(
-    traj: dict, metadata: dict, normalization_type: NormalizationType
-):
-    """Normalizes the action and proprio fields of a trajectory using the given metadata."""
-    # maps keys of `metadata` to corresponding keys in `traj`
+def convert_to_float32(tensor):
+    if tensor.dtype != tf.float32:
+        return tf.cast(tensor, tf.float32)
+    return tensor
+
+def get_non_zero_dims(tensor):
+    """
+    Determine the number of non-zero dimensions in the tensor.
+    """
+    non_zero_mask = tf.not_equal(tf.reduce_sum(tf.abs(tensor), axis=0), 0)
+    return tf.reduce_sum(tf.cast(non_zero_mask, tf.int32))
+
+def tensor_to_scalar(tensor):
+    """Safely convert a tensor to a scalar value."""
+    if isinstance(tensor, (int, float)):
+        return tensor
+    elif isinstance(tensor, tf.Tensor):
+        return tf.get_static_value(tensor) or int(tensor)
+    else:
+        raise TypeError(f"Expected int, float, or Tensor, got {type(tensor)}")
+
+def get_non_zero_dims(tensor):
+    """
+    Determine the number of non-zero dimensions in the tensor.
+    Returns a scalar integer.
+    """
+    non_zero_mask = tf.not_equal(tf.reduce_sum(tf.abs(tensor), axis=0), 0)
+    return tensor_to_scalar(tf.reduce_sum(tf.cast(non_zero_mask, tf.int32)))
+
+def normalize_unified_action(x, metadata_key, metadata, normalization_type):
+    try:
+        x = tf.cast(x, tf.float32)
+        
+        # Log shapes and types for debugging
+        logging.debug(f"x shape: {x.shape}, type: {x.dtype}")
+        logging.debug(f"metadata[{metadata_key}]['p01'] shape: {metadata[metadata_key]['p01'].shape}, type: {metadata[metadata_key]['p01'].dtype}")
+        
+        # Determine the actual dimensions of non-zero elements
+        non_zero_dims = get_non_zero_dims(x)
+        logging.debug(f"non_zero_dims: {non_zero_dims}")
+        
+        # Ensure metadata tensors are the right shape
+        metadata_p01 = tf.cast(metadata[metadata_key]['p01'], tf.float32)
+        metadata_p99 = tf.cast(metadata[metadata_key]['p99'], tf.float32)
+        
+        if metadata_p01.shape[0] < non_zero_dims:
+            logging.warning(f"Metadata shape {metadata_p01.shape[0]} is smaller than non_zero_dims {non_zero_dims}. Adjusting non_zero_dims.")
+            non_zero_dims = metadata_p01.shape[0]
+
+        # Slice the metadata tensors to match the actual dimensions
+        metadata_p01 = metadata_p01[:non_zero_dims]
+        metadata_p99 = metadata_p99[:non_zero_dims]
+
+        if normalization_type == NormalizationType.NORMAL:
+            metadata_mean = tf.cast(metadata[metadata_key]['mean'][:non_zero_dims], tf.float32)
+            metadata_std = tf.cast(metadata[metadata_key]['std'][:non_zero_dims], tf.float32)
+            norm = (x[:, :non_zero_dims] - metadata_mean) / (metadata_std + 1e-8)
+        elif normalization_type == NormalizationType.BOUNDS:
+            norm = tf.clip_by_value(
+                2 * (x[:, :non_zero_dims] - metadata_p01) / (metadata_p99 - metadata_p01 + 1e-8) - 1,
+                -1, 1
+            )
+        else:
+            raise ValueError(f"Unknown normalization type {normalization_type}")
+
+        # Combine normalized part with zero-padded part
+        return tf.concat([norm, tf.zeros_like(x[:, non_zero_dims:])], axis=1)
+    except Exception as e:
+        logging.error(f"Error in normalize_unified_action: {str(e)}")
+        raise
+
+def normalize_action_and_proprio(traj: dict, metadata: dict, normalization_type: NormalizationType):
     keys_to_normalize = {
         "action": "action",
     }
     if "proprio" in traj["observation"]:
         keys_to_normalize["proprio"] = "observation/proprio"
 
-    if normalization_type == NormalizationType.NORMAL:
-        # normalize to mean 0, std 1
+    try:
         for key, traj_key in keys_to_normalize.items():
-            mask = metadata[key].get(
-                "mask", tf.ones_like(metadata[key]["mean"], dtype=tf.bool)
-            )
-            traj = dl.transforms.selective_tree_map(
-                traj,
-                match=lambda k, _: k == traj_key,
-                map_fn=lambda x: tf.where(
-                    mask, (x - metadata[key]["mean"]) / (metadata[key]["std"] + 1e-8), x
-                ),
-            )
-        return traj
+            if key == "action":
+                traj[traj_key] = normalize_unified_action(traj[traj_key], key, metadata, normalization_type)
+            else:
+                # Handling for non-action keys (e.g., proprio) remains the same
+                mask = metadata[key].get("mask", tf.ones_like(metadata[key]["mean"], dtype=tf.bool))
+                if normalization_type == NormalizationType.NORMAL:
+                    traj[traj_key] = tf.where(
+                        mask,
+                        (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["mean"], tf.float32)) / 
+                        (tf.cast(metadata[key]["std"], tf.float32) + 1e-8),
+                        traj[traj_key]
+                    )
+                elif normalization_type == NormalizationType.BOUNDS:
+                    traj[traj_key] = tf.where(
+                        mask,
+                        tf.clip_by_value(
+                            2 * (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["p01"], tf.float32)) /
+                            (tf.cast(metadata[key]["p99"], tf.float32) - tf.cast(metadata[key]["p01"], tf.float32) + 1e-8) - 1,
+                            -1, 1
+                        ),
+                        traj[traj_key]
+                    )
+    except Exception as e:
+        logging.error(f"Error in normalize_action_and_proprio: {str(e)}")
+        raise
 
-    if normalization_type == NormalizationType.BOUNDS:
-        # normalize to [-1, 1]
-        for key, traj_key in keys_to_normalize.items():
-            mask = metadata[key].get(
-                "mask", tf.ones_like(metadata[key]["p01"], dtype=tf.bool)
-            )
-            traj = dl.transforms.selective_tree_map(
-                traj,
-                match=lambda k, _: k == traj_key,
-                map_fn=lambda x: tf.where(
-                    mask,
-                    tf.clip_by_value(
-                        2
-                        * (x - metadata[key]["p01"])
-                        / (metadata[key]["p99"] - metadata[key]["p01"] + 1e-8)
-                        - 1,
-                        -1,
-                        1,
-                    ),
-                    x,
-                ),
-            )
-        return traj
-
-    raise ValueError(f"Unknown normalization type {normalization_type}")
+    return traj
 
 
 def binarize_gripper_actions(actions: tf.Tensor, open_boundary: float = 0.95, close_boundary: float = 0.05) -> tf.Tensor:

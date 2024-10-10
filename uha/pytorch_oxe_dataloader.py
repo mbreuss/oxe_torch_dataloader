@@ -7,8 +7,22 @@ import numpy as np
 import torch
 import torch.nn as nn
 from uha.data.utils.data_utils import hydra_get_object
+# from uha.data.utils.lang_buffer import AdvancedLangEmbeddingBuffer
 from uha.data.language_encoders.no_encoder import NoEncoder
 from dlimp.dataset import DLataset
+
+
+def print_tensor_shapes(data, prefix=''):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            print_tensor_shapes(value, prefix + key + '.')
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            print_tensor_shapes(item, prefix + f'[{i}].')
+    elif isinstance(data, (np.ndarray, torch.Tensor)):
+        print(f"{prefix[:-1]}: shape {data.shape}")
+    else:
+        print(f"{prefix[:-1]}: type {type(data)}")
 
 
 class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
@@ -21,6 +35,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             transform_dict = None,
             language_encoder: nn.Module = NoEncoder(),
             is_single_dataset: bool = False,
+            max_cache_size: int = 10000,
     ):
         super(TorchRLDSIterableDataset).__init__()
         self._rlds_dataset = rlds_dataset
@@ -34,6 +49,8 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         self._adjust_type = transform_dict["adjust_type"] if transform_dict is not None and "adjust_type" in transform_dict else None
         self._bytes_to_string = transform_dict["bytes_to_string"] if transform_dict is not None and "bytes_to_string" in transform_dict else True
         self._add_robot_information = transform_dict["add_robot_information"] if transform_dict is not None and "add_robot_information" in transform_dict else False
+
+        # self._lang_embedding_buffer = AdvancedLangEmbeddingBuffer(self._language_encoder, goal_instruction_buffer_size=max_cache_size)
 
     def __iter__(self):
         for sample in self._rlds_dataset.iterator(prefetch=2048): # batchsize
@@ -94,32 +111,24 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             sample["action"] = sample["action"].astype(dtype)
 
         if self._bytes_to_string:
-            # if self._is_single_dataset:
-                # if sample["task"]["pad_mask_dict"]["language_instruction"][0][0]:
-                #     sample["task"]["language_instruction"] = sample["task"]["language_instruction"][0][0].decode("utf-8")
-                #     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
-                # else:
-                #     sample["task"]["language_instruction"] = self._language_encoder("")
-                # sample["task"]["language_instruction"] = self._vectorized_lang_encoder(sample["task"]["language_instruction"])
-
-                # sample["task"]["language_instruction"] = self._language_encoder(
-                #     [s.decode("utf-8") for s in sample["task"]["language_instruction"]]
-                # )
-                    
-            # else:
-                # print(sample["task"]["language_instruction"])
                 if sample["task"]["pad_mask_dict"]["language_instruction"]:
                     sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
                     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
+                    # sample["task"]["language_instruction"] = self._lang_embedding_buffer.get_goal_instruction_embeddings(sample["task"]["language_instruction"])
                 else:
-                    sample["task"]["language_instruction"] = self._language_encoder("")
+                    sample["task"]["language_instruction"] = self._lang_embedding_buffer.get_goal_instruction_embeddings("")
 
-        if "robot_information" in sample["observation"]:
+        if "robot_information" in sample["task"]:
             if self._add_robot_information:
-                sample["observation"]["robot_information"] = self._language_encoder(sample["observation"]["robot_information"])
+                # Decode the byte string to a regular string
+                robot_info_str = sample["task"]["robot_information"].decode('utf-8')
+                sample["task"]["robot_information"] = self._language_encoder(robot_info_str)
+                # self._goal_instruction_buffer
+                # sample["task"]["robot_information"] = self._lang_embedding_buffer.get_robot_info_embeddings(robot_info_str)
             else:
-                del sample["observation"]["robot_information"]
+                del sample["task"]["robot_information"]
 
+        # print_tensor_shapes(sample)
         return sample
     
     def remap_sample(self, sample):
@@ -154,6 +163,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                         transformed_sample[value] = sample[old_key]
 
             return transformed_sample
+
 
 class TorchRLDSIterableDatasetTF(torch.utils.data.IterableDataset):
     """Thin wrapper around RLDS dataset for use with PyTorch dataloaders."""

@@ -16,6 +16,7 @@ from typing import Any, Dict
 
 import tensorflow as tf
 
+
 from uha.data.utils.data_utils import (
     binarize_gripper_actions,
     invert_gripper_actions,
@@ -23,16 +24,109 @@ from uha.data.utils.data_utils import (
     relabel_actions,
 )
 
-def add_robot_information(robot_name, action_space, number_arms):
-    if(number_arms > 1):
-        return "A {robot_name} robot with {number_arms} arms controlled by {action_space} actions".format(robot_name=robot_name, number_arms=number_arms, action_space=action_space)
-    else:
-        return "A {robot_name} robot with {number_arms} arm controlled by {action_space} actions".format(robot_name=robot_name, number_arms=number_arms, action_space=action_space)
+import tensorflow as tf
 
+
+def get_action_space_index(robot_type, num_arms, control_mode='position'):
+    # Validate num_arms input
+    if num_arms not in [1, 2]:
+        raise ValueError("num_arms must be either 1 or 2")
+
+    # Mapping of (robot_type, control_mode, num_arms) to indices
+    action_space_mapping = {
+        ('EEF_POS', 'position', 1): 0,  # end-effector pos-1-arm pos
+        ('EEF_POS', 'velocity', 1): 1,  # end-effector-delta 1-arm
+        ('JOINT_POS', 'position', 1): 2,  # joint-1-arm pos
+        ('EEF_POS', 'position', 2): 3,  # end-effector pos-2-arm pos
+        ('EEF_POS', 'velocity', 2): 4,  # end-effector-delta 2-arm
+        ('JOINT_POS', 'position', 2): 5,  # joint-2-arm pos
+    }
+    
+    # Get the index from the mapping, or use a free element (6-15) if not found
+    index = action_space_mapping.get((robot_type, control_mode, num_arms), 6)
+    
+    # Ensure the index is within the valid range (0-15)
+    index = min(max(index, 0), 15)
+    
+    # Convert to TensorFlow tensor
+    return tf.constant(index, dtype=tf.int32)
+
+
+def create_unified_action_vector(action, robot_type, control_mode='position'):
+    if action is None:
+        return tf.zeros((1, 76), dtype=tf.float32), None
+    
+    batch_size = tf.shape(action)[0]
+    unified_action = tf.zeros((batch_size, 76), dtype=tf.float32)
+    
+    if control_mode == 'position':
+        start_idx = 0
+    elif control_mode == 'velocity':
+        start_idx = 38
+    else:
+        raise ValueError(f"Unsupported control mode: {control_mode}")
+    
+    if robot_type == "EEF_POS":
+        indices = tf.stack([
+            tf.repeat(tf.range(batch_size), 6),
+            tf.tile(tf.range(start_idx, start_idx + 6), [batch_size]) 
+        ], axis=1)
+        updates = tf.reshape(action[:, :6], [-1])
+        unified_action = tf.tensor_scatter_nd_update(unified_action, indices, updates)
+        
+        gripper_indices = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 13)], axis=1)
+        unified_action = tf.tensor_scatter_nd_update(unified_action, gripper_indices, action[:, -1])
+        
+    elif robot_type == "JOINT_POS":
+        indices = tf.stack([
+            tf.repeat(tf.range(batch_size), 7),
+            tf.tile(tf.range(start_idx + 6, start_idx + 13), [batch_size]) 
+        ], axis=1)
+        updates = tf.reshape(action[:, :7], [-1])
+        unified_action = tf.tensor_scatter_nd_update(unified_action, indices, updates)
+        
+        gripper_indices = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 13)], axis=1)
+        unified_action = tf.tensor_scatter_nd_update(unified_action, gripper_indices, action[:, -1])
+        
+    elif robot_type == "JOINT_POS_BIMANUAL":
+        indices1 = tf.stack([
+            tf.repeat(tf.range(batch_size), 7),
+            tf.tile(tf.range(start_idx + 6, start_idx + 13), [batch_size]) 
+        ], axis=1)
+        indices2 = tf.stack([
+            tf.repeat(tf.range(batch_size), 7),
+            tf.tile(tf.range(start_idx + 20, start_idx + 27), [batch_size]) 
+        ], axis=1)
+        updates = tf.reshape(action[:, :14], [-1])
+        unified_action = tf.tensor_scatter_nd_update(unified_action, tf.concat([indices1, indices2], axis=0), updates)
+        
+        gripper_indices1 = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 13)], axis=1)
+        gripper_indices2 = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 27)], axis=1)
+        unified_action = tf.tensor_scatter_nd_update(unified_action, 
+                                                     tf.concat([gripper_indices1, gripper_indices2], axis=0),
+                                                     tf.reshape(action[:, 14:], [-1]))
+    else:
+        raise ValueError(f"Unsupported robot type: {robot_type}")
+    
+    return unified_action, action
+
+
+def add_robot_information(robot_name, action_space, number_arms):
+    if number_arms > 1:
+        info = "A {robot_name} robot with {number_arms} arms controlled by {action_space} actions".format(
+            robot_name=robot_name, number_arms=number_arms, action_space=action_space)
+    else:
+        info = "A {robot_name} robot with {number_arms} arm controlled by {action_space} actions".format(
+            robot_name=robot_name, number_arms=number_arms, action_space=action_space)
+    
+    # Convert the string to a TensorFlow tensor of type tf.string
+    info_tensor = tf.convert_to_tensor(info, dtype=tf.string)
+    return tf.reshape(info, [-1])
 
 def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # marcel's?
-    trajectory["action"] = tf.concat(
+    temp_dict ={}
+    temp_dict['action'] = tf.concat(
         [
             trajectory["action"][:, :6],
             binarize_gripper_actions(trajectory["action"][:, -1])[:, None],
@@ -40,21 +134,33 @@ def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=1,
     )
     # TODO: confirm we need this for marcel's
-    trajectory = relabel_actions(trajectory)
+    temp_dict = relabel_actions(temp_dict)
+
+    # now move to unifed action space
+
+    unified_action, original_action = create_unified_action_vector(temp_dict['action'], robot_type="EEF_POS", control_mode="velocity")
 
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
+
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
 def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
-    trajectory["action"] = tf.concat(
+    actions = tf.concat(
         [
             trajectory["action"][:, :6],
             binarize_gripper_actions(trajectory["action"][:, -1], 0.05, 0.01)[:, None],
         ],
         axis=-1,
     )
+
+    unified_action, original_action = create_unified_action_vector(actions, "Franka", "EEF_POS", control_mode='velocity')
+
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["end_effector_pos"][:, :],
@@ -64,17 +170,23 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=1
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
 def kit_irl_dataset_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
-    trajectory["action"] = tf.concat(
+    actions = tf.concat(
         [
             trajectory["delta_des_joint_state"][:, :7],
             binarize_gripper_actions(trajectory["action"][:, -1], 0.05, 0.01)[:, None],
         ],
         axis=-1,
     )
+    unified_action, original_action = create_unified_action_vector(actions, "Franka", "EEF_POS", control_mode='velocity')
+
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["joint_state"][:, :],
@@ -83,17 +195,22 @@ def kit_irl_dataset_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
         axis=1
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta joint", 1)
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
     return trajectory
 
 
 def kit_irl_dataset_abs_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
-    trajectory["action"] = tf.concat(
+    actions = tf.concat(
         [
             trajectory["action_joint_state"][:, :7],
             binarize_gripper_actions(trajectory["action"][:, -1], 0.05, 0.01)[:, None],
         ],
         axis=-1,
     )
+    unified_action, original_action = create_unified_action_vector(actions, "JOINT_POS", control_mode='position')
+
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["joint_state"][:, :],
@@ -102,17 +219,21 @@ def kit_irl_dataset_abs_joint_transform(trajectory: Dict[str, Any]) -> Dict[str,
         axis=1
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     return trajectory
 
 
 def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
-    trajectory["action"] = tf.concat(
+    actions = tf.concat(
         [
             trajectory["action_abs"][:, :6],
             binarize_gripper_actions(trajectory["action_abs"][:, -1], 0.05, 0.01)[:, None],
         ],
         axis=-1,
     )
+    unified_action, original_action = create_unified_action_vector(actions, "EEF_POS", control_mode='position')
+
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["end_effector_pos"][:, :],
@@ -122,6 +243,10 @@ def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=1
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute end-effector", 1)
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'position')
     return trajectory
 
 
@@ -133,6 +258,9 @@ def droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ],
         axis=-1,
     )
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='position')
+
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["joint_position"][:, :],
@@ -141,6 +269,11 @@ def droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=1
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
+
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     return trajectory
 
 
@@ -155,8 +288,15 @@ def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=-1,
     )
     trajectory = relabel_actions(trajectory)
+    
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -173,6 +313,10 @@ def rt1_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["base_pose_tool_reached"],
@@ -184,6 +328,10 @@ def rt1_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         "natural_language_instruction"
     ]
     trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -217,10 +365,17 @@ def kuka_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -247,6 +402,14 @@ def taco_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         "natural_language_instruction"
     ]
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
+    trajectory['action'] = unified_action
     return trajectory
 
 
@@ -270,6 +433,12 @@ def jaco_play_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         "natural_language_instruction"
     ]
     trajectory["observation"]["robot_information"] = add_robot_information("Jaco 2", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -289,6 +458,13 @@ def berkeley_cable_routing_dataset_transform(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
+    trajectory['action'] = unified_action
     return trajectory
 
 
@@ -314,6 +490,13 @@ def roboturk_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
+    trajectory['action'] = unified_action
     return trajectory
 
 
@@ -338,6 +521,12 @@ def nyu_door_opening_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, 
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -366,6 +555,12 @@ def viola_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -395,6 +590,12 @@ def berkeley_autolab_ur5_dataset_transform(
         "natural_language_instruction"
     ]
     trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -412,6 +613,12 @@ def toto_dataset_transform_eef(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -430,6 +637,8 @@ def toto_dataset_transform_joint(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         tf.shape(traj_truncated["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    trajectory['action'] = create_unified_action_vector(trajectory['action'], "JOINT_POS", control_mode='position')
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     return traj_truncated
 
 
@@ -457,6 +666,12 @@ def language_table_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
         :, :1
     ].to_tensor()[:, 0]
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -474,6 +689,11 @@ def pusht_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         "natural_language_instruction"
     ]
     trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -499,6 +719,12 @@ def stanford_kuka_multimodal_dataset_transform(
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -506,6 +732,11 @@ def nyu_rot_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :7]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
+    trajectory['action'] = unified_action
     return trajectory
 
 
@@ -530,6 +761,12 @@ def stanford_hydra_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -549,6 +786,12 @@ def austin_buds_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -572,6 +815,12 @@ def nyu_franka_play_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -584,6 +833,12 @@ def maniskill_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -609,6 +864,12 @@ def furniture_bench_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -621,6 +882,12 @@ def cmu_franka_exploration_dataset_transform(
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -628,6 +895,12 @@ def ucsd_kitchen_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, :7]
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -642,6 +915,11 @@ def ucsd_pick_place_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -661,6 +939,12 @@ def austin_sailor_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -680,6 +964,12 @@ def austin_sirius_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -706,6 +996,12 @@ def bc_z_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         "natural_language_instruction"
     ]
     trajectory["observation"]["robot_information"] = add_robot_information("Google Robot", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -715,6 +1011,12 @@ def tokyo_pr2_opening_fridge_dataset_transform(
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("PR2", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -724,6 +1026,12 @@ def tokyo_pr2_tabletop_manipulation_dataset_transform(
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("PR2", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -731,6 +1039,12 @@ def utokyo_xarm_pick_place_dataset_transform(
     trajectory: Dict[str, Any]
 ) -> Dict[str, Any]:
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -742,6 +1056,11 @@ def utokyo_xarm_bimanual_dataset_transform(
         "end_effector_pose"
     ]
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 2)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
     return trajectory
 
 
@@ -762,6 +1081,12 @@ def robo_net_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Multi-Robot", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -785,6 +1110,11 @@ def berkeley_mvp_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     )
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "absolute joint", 1)
 
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
+    trajectory['action'] = unified_action
     return trajectory
 
 
@@ -815,6 +1145,9 @@ def berkeley_rpt_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
 
+    trajectory['action'] = create_unified_action_vector(trajectory['action'], "JOINT_POS", control_mode='position')
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
+
     return traj_truncated
 
 
@@ -830,6 +1163,12 @@ def kaist_nonprehensible_dataset_transform(
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, -7:]
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -851,6 +1190,12 @@ def stanford_mask_vit_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str,
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -868,12 +1213,24 @@ def tokyo_lsmo_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 def dlr_sara_pour_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("DLR SARA", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
 def dlr_sara_grid_clamp_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, :6]
     trajectory["observation"]["robot_information"] = add_robot_information("DLR SARA", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -890,6 +1247,12 @@ def dlr_edan_shared_control_dataset_transform(
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("DLR EDAN", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "DLR EDAN", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -902,12 +1265,24 @@ def asu_table_top_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
 def robocook_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -918,6 +1293,12 @@ def imperial_wristcam_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str,
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -940,6 +1321,12 @@ def iamlab_pick_insert_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -957,6 +1344,11 @@ def uiuc_d3field_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Kinova Gen3", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
     return trajectory
 
 
@@ -976,6 +1368,12 @@ def utaustin_mutex_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
     trajectory["observation"]["robot_information"] = add_robot_information("PAMY2", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -996,6 +1394,12 @@ def berkeley_fanuc_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Fanuc Mate", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -1014,6 +1418,12 @@ def cmu_playing_with_food_dataset_transform(
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -1027,6 +1437,12 @@ def playfusion_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -1041,6 +1457,12 @@ def cmu_stretch_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -1069,6 +1491,7 @@ def gnm_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         # truncate last element for all other keys
         traj = tf.nest.map_structure(lambda x: x[:-1], traj)
         traj["action"] = action
+        
         return traj
 
     def dummy_traj():
@@ -1081,6 +1504,7 @@ def gnm_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
 
+    # trajectory['action'] = unified_action
     return trajectory
 
 
@@ -1091,6 +1515,12 @@ def aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "JOINT_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 2, 'position')
     return trajectory
 
 
@@ -1104,6 +1534,12 @@ def fmb_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -1111,6 +1547,12 @@ def dobbe_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # every input feature is batched, ie has leading batch dimension
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 
@@ -1131,6 +1573,12 @@ def roboset_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=-1,
     )
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "JOINT_POS", control_mode='position')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     return trajectory
 
 
@@ -1149,6 +1597,11 @@ def rh20t_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    # TODO what here??
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     return trajectory
 
 
@@ -1157,6 +1610,9 @@ def mujoco_manip_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     trajectory["action"] = tf.concat(
         (trajectory["action"][:, :6], gripper_action), axis=-1
     )
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action
+    trajectory['action'] = unified_action
     return trajectory
 
 
@@ -1172,9 +1628,17 @@ def libero_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ],
         axis=1,
     )
+    
     trajectory["observation"]["EEF_state"] = trajectory["observation"]["state"][:, :6]
     trajectory["observation"]["gripper_state"] = trajectory["observation"]["state"][:, -2:]  # 2D gripper state
     trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action  # Keep the original action for normalization
+    
+    trajectory['action'] = unified_action
+
+    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
 

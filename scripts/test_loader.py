@@ -20,8 +20,8 @@ def main(cfg: DictConfig):
     cfg_transforms = OmegaConf.to_object(cfg.transforms)
     language_encoder = hydra.utils.instantiate(cfg.language_encoders)
     # create Pytorch Train Dataset
-    # dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
-    dataloader = multi_worker_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
+    dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
+    # dataloader = multi_worker_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
     # dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512)
     generator = iter(dataloader)
     time.sleep(5)
@@ -33,12 +33,10 @@ def main(cfg: DictConfig):
         # print("Task keys: ", sample["task"].keys())
         # print("action: ", sample["action"][:, 0, -1])
         print(step)
-
         # print("Top-level keys: ", sample.keys())
         # print("Task keys: ", sample["task"].keys())
         # print("task image_primary shape: ", sample["task"]["image_primary"].shape)
         # print("observation image_primary shape: ", sample["observation"]["image_primary"].shape)
-
         # print("task language tokens: ", sample["task"]["language_instruction"]["input_ids"].shape)
         # print("observation_proprio shape: ", sample["observation"]["proprio"].shape)
         # break
