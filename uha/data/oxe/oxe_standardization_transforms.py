@@ -32,6 +32,24 @@ class NormalizationType(Enum):
     BOUNDS = 2
 
 
+def get_robot_info_from_index(action_space_index):
+    index_mapping = {
+        0: ('EEF_POS', 'position', 1),
+        1: ('EEF_POS', 'velocity', 1),
+        2: ('JOINT_POS', 'position', 1),
+        3: ('EEF_POS', 'position', 2),
+        4: ('EEF_POS', 'velocity', 2),
+        5: ('JOINT_POS', 'position', 2),
+        6: ('JOINT_POS_BIMANUAL_NAV', 'position', 2),  # New action space
+        5: ('JOINT_POS_BIMANUAL', 'position', 2),  # Adding JOINT_POS_BIMANUAL
+    }
+    # Convert TensorFlow tensor to Python integer
+    if isinstance(action_space_index, tf.Tensor):
+        action_space_index = int(action_space_index.numpy())
+    
+    return index_mapping.get(action_space_index, ('EEF_POS', 'velocity', 1))  # Default to EEF_POS, velocity, 1-arm if not found
+
+
 def create_action_normalization_mask(robot_type, control_mode='position'):
     mask = [False] * 76
     
@@ -44,15 +62,22 @@ def create_action_normalization_mask(robot_type, control_mode='position'):
     
     if robot_type == "EEF_POS":
         mask[start_idx:start_idx+6] = [True] * 6
-        mask[start_idx+13] = False  # gripper
+        mask[start_idx+13] = True  # gripper
     elif robot_type == "JOINT_POS":
         mask[start_idx+6:start_idx+13] = [True] * 7
-        mask[start_idx+13] = False  # gripper
+        mask[start_idx+13] = True  # gripper
     elif robot_type == "JOINT_POS_BIMANUAL":
         mask[start_idx+6:start_idx+13] = [True] * 7
         mask[start_idx+20:start_idx+27] = [True] * 7
-        mask[start_idx+13] = False  # left gripper
-        mask[start_idx+27] = False  # right gripper
+        mask[start_idx+13] = True  # left gripper
+        mask[start_idx+27] = True  # right gripper
+    elif robot_type == 'JOINT_POS_BIMANUAL_NAV':
+        mask[start_idx+6:start_idx+12] = [True] * 6  # left arm
+        mask[start_idx+20:start_idx+26] = [True] * 6  # right arm
+        mask[start_idx+13] = True  # left gripper
+        mask[start_idx+27] = True  # right gripper
+        mask[start_idx+28:start_idx+30] = [True] * 2  # base linear velocity (x, y)
+        mask[start_idx+30] = True  # base angular velocity
     else:
         raise ValueError(f"Unsupported robot type: {robot_type}")
     
@@ -76,26 +101,70 @@ def create_sparse_unified_action(action, robot_type, control_mode='position'):
     values = []
     
     if robot_type == "EEF_POS":
-        indices.extend([(i, start_idx + j) for i in range(batch_size) for j in range(6)])
-        values.extend(tf.reshape(action[:, :6], [-1]))
-        indices.extend([(i, start_idx + 13) for i in range(batch_size)])
-        values.extend(action[:, -1])
+        # Handle end-effector position for 6 DoF
+        arm_indices = [(i, start_idx + j) for i in range(batch_size) for j in range(6)]
+        arm_values = tf.reshape(action[:, :6], [-1])
+        indices.extend(arm_indices)
+        values.extend(arm_values)
+        
+        # Handle gripper
+        gripper_indices = [(i, start_idx + 13) for i in range(batch_size)]
+        gripper_values = action[:, -1]
+        indices.extend(gripper_indices)
+        values.extend(gripper_values)
+    
     elif robot_type == "JOINT_POS":
-        indices.extend([(i, start_idx + 6 + j) for i in range(batch_size) for j in range(7)])
-        values.extend(tf.reshape(action[:, :7], [-1]))
-        indices.extend([(i, start_idx + 13) for i in range(batch_size)])
-        values.extend(action[:, -1])
+        # Handle joint positions for 7 DoF
+        joint_indices = [(i, start_idx + 6 + j) for i in range(batch_size) for j in range(7)]
+        joint_values = tf.reshape(action[:, :7], [-1])
+        indices.extend(joint_indices)
+        values.extend(joint_values)
+        
+        # Handle gripper
+        gripper_indices = [(i, start_idx + 13) for i in range(batch_size)]
+        gripper_values = action[:, -1]
+        indices.extend(gripper_indices)
+        values.extend(gripper_values)
+    
     elif robot_type == "JOINT_POS_BIMANUAL":
-        indices.extend([(i, start_idx + 6 + j) for i in range(batch_size) for j in range(7)])
-        indices.extend([(i, start_idx + 20 + j) for i in range(batch_size) for j in range(7)])
-        values.extend(tf.reshape(action[:, :14], [-1]))
-        indices.extend([(i, start_idx + 13) for i in range(batch_size)])
-        indices.extend([(i, start_idx + 27) for i in range(batch_size)])
-        values.extend(tf.reshape(action[:, 14:], [-1]))
+        # Handle joint positions for both arms (7 DoF each)
+        left_arm_indices = [(i, start_idx + 6 + j) for i in range(batch_size) for j in range(7)]
+        right_arm_indices = [(i, start_idx + 20 + j) for i in range(batch_size) for j in range(7)]
+        arm_values = tf.reshape(action[:, :14], [-1])
+        indices.extend(left_arm_indices + right_arm_indices)
+        values.extend(arm_values)
+        
+        # Handle both grippers
+        gripper_indices = [(i, start_idx + 13) for i in range(batch_size)] + [(i, start_idx + 27) for i in range(batch_size)]
+        gripper_values = tf.reshape(action[:, 14:], [-1])
+        indices.extend(gripper_indices)
+        values.extend(gripper_values)
+    
+    elif robot_type == "JOINT_POS_BIMANUAL_NAV":
+        # Handle joint positions for both arms (6 DoF each)
+        arm_indices = [(i, start_idx + 6 + j) for i in range(batch_size) for j in range(6)] + \
+                      [(i, start_idx + 20 + j) for i in range(batch_size) for j in range(6)]
+        arm_values = tf.reshape(action[:, :12], [-1])
+        indices.extend(arm_indices)
+        values.extend(arm_values)
+        
+        # Handle both grippers
+        gripper_indices = [(i, start_idx + 13) for i in range(batch_size)] + [(i, start_idx + 27) for i in range(batch_size)]
+        gripper_values = tf.reshape(action[:, 12:14], [-1])
+        indices.extend(gripper_indices)
+        values.extend(gripper_values)
+        
+        # Handle base navigation (linear x, y and angular velocity)
+        nav_indices = [(i, start_idx + 28 + j) for i in range(batch_size) for j in range(3)]
+        nav_values = tf.reshape(action[:, 14:], [-1])
+        indices.extend(nav_indices)
+        values.extend(nav_values)
+    
     else:
         raise ValueError(f"Unsupported robot type: {robot_type}")
     
     return tf.sparse.SparseTensor(indices=indices, values=values, dense_shape=[batch_size, 76]), action
+
 
 def normalize_sparse_unified_action(action, stats, mask):
     if stats['type'] == NormalizationType.NORMAL:
@@ -108,29 +177,6 @@ def normalize_sparse_unified_action(action, stats, mask):
         normalized_values = 2 * (action.values - tf.gather(min_val, action.indices[:, 1])) / (tf.gather(max_val - min_val, action.indices[:, 1]) + 1e-8) - 1
     
     return tf.sparse.SparseTensor(indices=action.indices, values=normalized_values, dense_shape=action.dense_shape)
-
-'''def compute_dataset_statistics(dataset, action_normalization_mask):
-    action_stats = {
-        'mean': np.zeros(76),
-        'std': np.ones(76),
-        'min': np.zeros(76),
-        'max': np.ones(76),
-    }
-    
-    normalized_dims = [i for i, m in enumerate(action_normalization_mask) if m]
-    
-    actions = []
-    for traj in dataset:
-        actions.append(tf.sparse.to_dense(traj['action'])[:, normalized_dims])
-    
-    actions = np.concatenate(actions, axis=0)
-    
-    action_stats['mean'][normalized_dims] = np.mean(actions, axis=0)
-    action_stats['std'][normalized_dims] = np.std(actions, axis=0)
-    action_stats['min'][normalized_dims] = np.min(actions, axis=0)
-    action_stats['max'][normalized_dims] = np.max(actions, axis=0)
-    
-    return action_stats'''
 
 def sparse_to_dense_action(sparse_action):
     return tf.sparse.to_dense(sparse_action)
@@ -147,21 +193,21 @@ def get_action_space_index(robot_type, num_arms, control_mode='position'):
     # Mapping of (robot_type, control_mode, num_arms) to indices
     action_space_mapping = {
         ('EEF_POS', 'position', 1): 0,  # end-effector pos-1-arm pos
-        ('EEF_POS', 'velocity', 1): 1,  # end-effector-delta 1-arm
+        ('EEF_POS', 'velocity', 1): 1,  # end-effector delta-1-arm
         ('JOINT_POS', 'position', 1): 2,  # joint-1-arm pos
         ('EEF_POS', 'position', 2): 3,  # end-effector pos-2-arm pos
-        ('EEF_POS', 'velocity', 2): 4,  # end-effector-delta 2-arm
-        ('JOINT_POS', 'position', 2): 5,  # joint-2-arm pos
+        ('EEF_POS', 'velocity', 2): 4,  # end-effector delta-2-arm
+        ('JOINT_POS', 'position', 2): 5,  # joint-2-arm pos (unified for bimanual or regular)
+        ('JOINT_POS_BIMANUAL', 'position', 2): 5,  # joint-2-arm pos (unified for bimanual or regular)
+        ('JOINT_POS_BIMANUAL_NAV', 'position', 2): 6,  # joint-2-arm pos with navigation
     }
     
-    # Get the index from the mapping, or use a free element (6-15) if not found
-    index = action_space_mapping.get((robot_type, control_mode, num_arms), 6)
-    
-    # Ensure the index is within the valid range (0-15)
-    index = min(max(index, 0), 15)
+    # Get the index from the mapping, or use a default index if not found
+    index = action_space_mapping.get((robot_type, control_mode, num_arms), 8)
     
     # Convert to TensorFlow tensor
     return tf.constant(index, dtype=tf.int32)
+
 
 
 def create_unified_action_vector(action, robot_type, control_mode='position', stats=None):
@@ -226,8 +272,7 @@ def create_unified_action_vector(action, robot_type, control_mode='position', st
         gripper_indices = tf.stack([tf.range(batch_size), tf.fill([batch_size], start_idx + 13)], axis=1)
         
         # Use action[:, -1] directly
-        gripper_updates = tf.expand_dims(action[:, -1], axis=-1)
-        
+        gripper_updates = gripper_updates = action[:, -1]
         # Update the gripper action in the unified action vector
         unified_action = tf.tensor_scatter_nd_update(unified_action, gripper_indices, gripper_updates)
 
@@ -331,6 +376,7 @@ def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def compute_dataset_statistics(dataset, action_normalization_mask):
+    print(action_normalization_mask)
     action_stats = {
         'mean': tf.zeros(76, dtype=tf.float32),
         'std': tf.ones(76, dtype=tf.float32),
@@ -341,7 +387,13 @@ def compute_dataset_statistics(dataset, action_normalization_mask):
     normalized_dims = tf.where(action_normalization_mask)[:, 0]
     
     def accumulate_stats(acc, traj):
-        action = tf.gather(traj['action'], normalized_dims, axis=1)
+        action = traj['action']
+        action_dims = tf.shape(action)[1]
+        valid_dims = tf.where(normalized_dims < action_dims)[:, 0]
+        valid_normalized_dims = tf.gather(normalized_dims, valid_dims)
+        
+        action = tf.gather(action, valid_normalized_dims, axis=1)
+        
         acc['sum'] += tf.reduce_sum(action, axis=0)
         acc['sum_squared'] += tf.reduce_sum(tf.square(action), axis=0)
         acc['min'] = tf.minimum(acc['min'], tf.reduce_min(action, axis=0))
@@ -357,8 +409,17 @@ def compute_dataset_statistics(dataset, action_normalization_mask):
         'count': 0
     }
     
-    accumulated = dataset.reduce(initial_acc, accumulate_stats)
+    # Add debugging information
+    first_element = next(iter(dataset))
+    print(f"First element action shape: {tf.shape(first_element['action'])}")
+    print(f"Normalized dims: {normalized_dims}")
     
+    try:
+        accumulated = dataset.reduce(initial_acc, accumulate_stats)
+    except Exception as e:
+        print(f"Error in reduce operation: {e}")
+        return action_stats
+
     count = tf.cast(accumulated['count'], tf.float32)
     mean = accumulated['sum'] / count
     variance = (accumulated['sum_squared'] / count) - tf.square(mean)
@@ -475,8 +536,10 @@ def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 def droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = tf.concat(
         [
-            trajectory["action_dict"]["joint_position"][:, :7],
-            binarize_gripper_actions(trajectory["action_dict"]["gripper_position"][:, -1], 0.95, 0.05)[:, None],
+            # trajectory["action_dict"]["joint_position"][:, :7],
+            # binarize_gripper_actions(trajectory["action_dict"]["gripper_position"][:, -1], 0.95, 0.05)[:, None],
+            trajectory["action"]["joint_position"][:, :7],
+            binarize_gripper_actions(trajectory["action"]["gripper_position"][:, -1], 0.95, 0.05)[:, None],
         ],
         axis=-1,
     )
@@ -1329,10 +1392,10 @@ def berkeley_mvp_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     )
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "absolute joint", 1)
 
-    unified_action, original_action = create_unified_action_vector(trajectory['action'], "EEF_POS", control_mode='velocity')
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "JOINT_POS", control_mode='position')
     trajectory['unified_action'] = unified_action
     trajectory['original_action'] = original_action 
-    trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     trajectory['action'] = unified_action
     return trajectory
 
@@ -1735,11 +1798,28 @@ def aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["observation"]["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
 
-    unified_action, original_action = create_unified_action_vector(trajectory['action'], "JOINT_POS", control_mode='velocity')
+    print(trajectory['action'].shape)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "JOINT_POS_BIMANUAL", control_mode='position')
     trajectory['unified_action'] = unified_action
     trajectory['original_action'] = original_action 
     trajectory['action'] = unified_action
-    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 2, 'position')
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS_BIMANUAL', 2, 'position')
+    return trajectory
+
+def mobile_aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    # relabel actions to convert from 50Hz to 10Hz
+    factor = 5
+    trajectory = tf.nest.map_structure(lambda x: x[::factor], trajectory)
+
+    trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["observation"]["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
+
+    print(trajectory['action'].shape)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "JOINT_POS_BIMANUAL_NAV", control_mode='position')
+    trajectory['unified_action'] = unified_action
+    trajectory['original_action'] = original_action 
+    trajectory['action'] = unified_action
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS_BIMANUAL_NAV', 2, 'position')
     return trajectory
 
 
@@ -1921,7 +2001,7 @@ OXE_STANDARDIZATION_TRANSFORMS = {
     "gnm_dataset": gnm_dataset_transform,
     "aloha_static_dataset": aloha_dataset_transform,
     "aloha_dagger_dataset": aloha_dataset_transform,
-    "aloha_mobile": aloha_dataset_transform,
+    "aloha_mobile": mobile_aloha_dataset_transform,
     "fmb_dataset": fmb_dataset_transform,
     "dobbe": dobbe_dataset_transform,
     "robo_set": roboset_dataset_transform,

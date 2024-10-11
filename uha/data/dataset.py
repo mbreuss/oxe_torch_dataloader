@@ -21,7 +21,7 @@ from uha.data.utils.data_utils import (
 )
 from uha.data.oxe.oxe_standardization_transforms import (
     create_action_normalization_mask, 
-    apply_unified_action_vector,
+    get_robot_info_from_index,
     compute_dataset_statistics,
 )
 from uha.data.utils.spec import ModuleSpec
@@ -681,6 +681,7 @@ def make_interleaved_dataset(
     traj_transform_threads: Optional[int] = None,
     traj_read_threads: Optional[int] = None,
 ) -> dl.DLataset:
+    
     if not sample_weights:
         sample_weights = [1.0] * len(dataset_kwargs_list)
     if len(sample_weights) != len(dataset_kwargs_list):
@@ -691,8 +692,11 @@ def make_interleaved_dataset(
     dataset_sizes = []
     all_dataset_statistics = {}
     for dataset_kwargs in dataset_kwargs_list:
-        # Remove action_space_index from kwargs if present
+        # Get action_space_index from kwargs
         action_space_index = dataset_kwargs.pop('action_space_index', None)
+        
+        # Reconstruct robot_type, control_mode, and num_arms from action_space_index
+        robot_type, control_mode, num_arms = get_robot_info_from_index(action_space_index)
         
         dataset, dataset_statistics = make_dataset_from_rlds(**dataset_kwargs, train=train)
         dataset_sizes.append(dataset_statistics["num_transitions"])
@@ -700,22 +704,27 @@ def make_interleaved_dataset(
             dataset_kwargs["name"] not in all_dataset_statistics
         ), f"Duplicate name {dataset_kwargs['name']}"
         
-        robot_type = dataset_kwargs.get("robot_type", "EEF_POS")
-        control_mode = dataset_kwargs.get("control_mode", "position")
         action_normalization_mask = create_action_normalization_mask(robot_type, control_mode)
         unified_action_stats = compute_dataset_statistics(dataset, action_normalization_mask)
         dataset_statistics["unified_action_stats"] = unified_action_stats
         dataset_statistics["action_space_index"] = action_space_index
+        dataset_statistics["robot_type"] = robot_type
+        dataset_statistics["control_mode"] = control_mode
+        dataset_statistics["num_arms"] = num_arms
         all_dataset_statistics[dataset_kwargs["name"]] = dataset_statistics
 
-    primary_dataset_indices = np.array([idx for idx in range(len(sample_weights)) if sample_weights[idx] >= 1.0])
+    primary_dataset_indices = np.where(np.greater_equal(sample_weights, 1.0))[0]
 
     if balance_weights:
         sample_weights = np.array(sample_weights) * np.array(dataset_sizes)
     sample_weights = np.array(sample_weights) / np.sum(sample_weights)
     pprint_data_mixture(dataset_kwargs_list, sample_weights)
 
-    dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
+    if len(primary_dataset_indices) > 0:
+        dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
+    else:
+        # If no primary datasets, use the maximum size of all datasets
+        dataset_len = int(np.max(dataset_sizes / sample_weights))
 
     threads_per_dataset = allocate_threads(traj_transform_threads, sample_weights)
     reads_per_dataset = allocate_threads(traj_read_threads, sample_weights)
@@ -729,15 +738,15 @@ def make_interleaved_dataset(
         threads_per_dataset,
         reads_per_dataset,
     ):
-        # Remove action_space_index from kwargs if present
-        dataset_kwargs.pop('action_space_index', None)
+        # Get dataset statistics
+        dataset_stats = all_dataset_statistics[dataset_kwargs["name"]]
         
         dataset, _ = make_dataset_from_rlds(
             **dataset_kwargs,
             train=train,
             num_parallel_calls=threads,
             num_parallel_reads=reads,
-            dataset_statistics=all_dataset_statistics[dataset_kwargs["name"]],
+            dataset_statistics=dataset_stats,
         )
         dataset = apply_trajectory_transforms(
             dataset.repeat(),
@@ -746,12 +755,13 @@ def make_interleaved_dataset(
             train=train,
         ).flatten(num_parallel_calls=threads)
         
+        # Apply unified action vector if needed
         '''dataset = dataset.map(
             lambda x: apply_unified_action_vector(
                 x,
-                dataset_kwargs.get("robot_type", "EEF_POS"),
-                dataset_kwargs.get("control_mode", "position"),
-                all_dataset_statistics[dataset_kwargs["name"]]["unified_action_stats"]
+                dataset_stats["robot_type"],
+                dataset_stats["control_mode"],
+                dataset_stats["unified_action_stats"]
             ),
             num_parallel_calls=threads
         )'''
@@ -774,3 +784,5 @@ def make_interleaved_dataset(
     dataset.sample_weights = sample_weights
     dataset.dataset_len = dataset_len
     return dataset
+
+
