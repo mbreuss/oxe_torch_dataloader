@@ -180,6 +180,8 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "/home/marcelr/tensorflow_datasets",
         "language_key": "language_instruction*",
+        "control_mode": 'positon',
+        "num_arms": 1,
         # "shuffle": False,
     },
     "kit_irl_real_kitchen_vis": {
@@ -188,6 +190,8 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "/home/marcelr/tensorflow_datasets",
+        "control_mode": 'position',
+        "num_arms": 1,
         # "shuffle": False,
     },
     "droid": {
@@ -200,6 +204,8 @@ OXE_DATASET_CONFIGS = {
         "filter_functions": [
             ModuleSpec.create("uha.data.utils.data_utils:filter_success_droid")
         ],
+        "control_mode": 'position',
+        "num_arms": 1,
         # "shuffle": False,
     },
     "fractal20220817_data": {
@@ -207,12 +213,16 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_QUAT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "kuka": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": None},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_QUAT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     # NOTE: this is not actually the official OXE copy of bridge, it is our own more up-to-date copy that you
     # can find at https://rail.eecs.berkeley.edu/datasets/bridge_release/data/tfds/
@@ -223,6 +233,8 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.EEF_POS,
         # "data_dir": "~/tensorflow_datasets",
         "data_dir": "/home/marcelr/tensorflow_datasets",
+        "control_mode": 'velocity',
+        "num_arms": 1,
         # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets/rail.eecs.berkeley.edu/datasets/bridge_release/data/tfds",
     },
     "taco_play": {
@@ -298,6 +310,8 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "~/tensorflow_datasets",
         # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
+        "control_mode": 'position',
+        "num_arms": 1,
     },
     "language_table": {
         "image_obs_keys": {"primary": "rgb", "secondary": None, "wrist": None},
@@ -482,6 +496,8 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.JOINT_POS,
         # "data_dir": "~/tensorflow_datasets",
         # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
+        "control_mode": 'position',
+        "num_arms": 1,
     },
     "kaist_nonprehensile_converted_externally_to_rlds": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": None},
@@ -592,18 +608,24 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "cmu_stretch": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": None},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "gnm_dataset": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": None},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_NAV,
         "action_encoding": ActionEncoding.NAV_2D,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "aloha_static_dataset": {
         "image_obs_keys": {
@@ -657,6 +679,8 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "robo_set": {
         "image_obs_keys": {
@@ -697,6 +721,10 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.EEF_POS,
         # "data_dir": "~/tensorflow_datasets/modified_libero_rlds",
         "data_dir": "/home/marcelr/tensorflow_datasets/modified_libero_rlds",
+        "action_encoding": 'EEF_POS',
+        "control_mode": 'velocity',
+        "num_arms": 1,
+
     },
     "libero_object_no_noops": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": "wrist_image"},
@@ -705,6 +733,9 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.EEF_POS,
         # "data_dir": "~/tensorflow_datasets/modified_libero_rlds",
         "data_dir": "/home/marcelr/tensorflow_datasets/modified_libero_rlds",
+        "action_encoding": 'EEF_POS',
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "libero_goal_no_noops": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": "wrist_image"},
@@ -713,6 +744,8 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.EEF_POS,
         # "data_dir": "~/tensorflow_datasets/modified_libero_rlds",
         "data_dir": "/home/marcelr/tensorflow_datasets/modified_libero_rlds",
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "libero_10_no_noops": {
         "image_obs_keys": {"primary": "image", "secondary": None, "wrist": "wrist_image"},
@@ -721,5 +754,7 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.EEF_POS,
         # "data_dir": "~/tensorflow_datasets/modified_libero_rlds",
         "data_dir": "/home/marcelr/tensorflow_datasets/modified_libero_rlds",
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
 }

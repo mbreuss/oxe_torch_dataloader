@@ -326,6 +326,7 @@ def make_dataset_from_rlds(
     use_unified_action: bool = False,
     unified_action_dim: int = 76,
     num_arms: int = 1,
+    control_mode: int = 'velocity',
 ) -> Tuple[dl.DLataset, dict]:
     """This function is responsible for loading a specific RLDS dataset from storage and getting it into a
     standardized format. Yields a dataset of trajectories. Does not include CPU-intensive operations.
@@ -393,7 +394,7 @@ def make_dataset_from_rlds(
         - dataset_name                  # name of the dataset
     """
     REQUIRED_KEYS = {"observation", "action"}
-    # force_recompute_dataset_statistics = True
+    force_recompute_dataset_statistics = True
 
     def restructure(traj):
         # apply a standardization function, if provided
@@ -508,9 +509,12 @@ def make_dataset_from_rlds(
             # Optionally, you can choose to continue without adding robot_information
             # pass
         try:
+            print('-------------------')
+            print('sinsdie make dataset from rlds')
             print(traj['action_space_index'])
             task['action_space_index'] = tf.cast(convert_scalar_to_1d(traj['action_space_index'], task['robot_information']), tf.int32)
             # print("Successfully added robot_information to task dict")
+            print('-------------------')
         except Exception as e:
             print(f"Error adding robot_information to task dict: {e}")
         # print("Task dict keys after adding robot_information:", task.keys())
@@ -693,6 +697,7 @@ def make_interleaved_dataset(
         # Get action_space_index from kwargs
         action_space_index = dataset_kwargs.pop('action_space_index', None)
         print('-------------')
+        print('in the datast loop of make interleaved datset')
         print(action_space_index)    
         # Reconstruct robot_type, control_mode, and num_arms from action_space_index
         robot_type, control_mode, num_arms = get_robot_info_from_index(action_space_index)
@@ -706,6 +711,11 @@ def make_interleaved_dataset(
         ), f"Duplicate name {dataset_kwargs['name']}"
         
         action_normalization_mask = create_action_normalization_mask(robot_type, control_mode)
+
+        print('-------------')
+        print('inside make_interleaved_dataset before comptung dataset statistics')
+        print(action_normalization_mask)
+        print('-------------')
         unified_action_stats = compute_dataset_statistics(dataset, action_normalization_mask)
         dataset_statistics["unified_action_stats"] = unified_action_stats
         dataset_statistics["action_space_index"] = action_space_index

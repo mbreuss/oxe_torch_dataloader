@@ -443,7 +443,7 @@ def normalize_unified_action(x, metadata_key, metadata, normalization_type):
         elif normalization_type == NormalizationType.BOUNDS:
             norm_values = tf.clip_by_value(
                 2 * (tf.gather(non_zero_values, non_zero_indices[:, -1]) - tf.gather(metadata_p01, non_zero_indices[:, -1])) / (tf.gather(metadata_p99, non_zero_indices[:, -1]) - tf.gather(metadata_p01, non_zero_indices[:, -1]) + 1e-8) - 1,
-                -1, 1
+                -5, 5
             )
         else:
             raise ValueError(f"Unknown normalization type {normalization_type}")
@@ -462,6 +462,7 @@ def normalize_unified_action(x, metadata_key, metadata, normalization_type):
         logging.error(f"Error in normalize_unified_action: {str(e)}")
         raise
 
+@tf.autograph.experimental.do_not_convert
 def normalize_action_and_proprio(traj: dict, metadata: dict, normalization_type: NormalizationType):
     keys_to_normalize = {
         "action": "action",
@@ -470,29 +471,36 @@ def normalize_action_and_proprio(traj: dict, metadata: dict, normalization_type:
         keys_to_normalize["proprio"] = "observation/proprio"
 
     try:
+        print('inside normalize_action_and_proprio')
         for key, traj_key in keys_to_normalize.items():
-            if key == "action":
+
+            print('---------------------')
+            print(key)
+            print('---------------------')
+
+
+            '''if key == "action":
                 traj[traj_key] = normalize_unified_action(traj[traj_key], key, metadata, normalization_type)
-            else:
-                # Handling for non-action keys (e.g., proprio) remains the same
-                mask = metadata[key].get("mask", tf.ones_like(metadata[key]["mean"], dtype=tf.bool))
-                if normalization_type == NormalizationType.NORMAL:
-                    traj[traj_key] = tf.where(
-                        mask,
-                        (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["mean"], tf.float32)) / 
-                        (tf.cast(metadata[key]["std"], tf.float32) + 1e-8),
-                        traj[traj_key]
-                    )
-                elif normalization_type == NormalizationType.BOUNDS:
-                    traj[traj_key] = tf.where(
-                        mask,
-                        tf.clip_by_value(
-                            2 * (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["p01"], tf.float32)) /
-                            (tf.cast(metadata[key]["p99"], tf.float32) - tf.cast(metadata[key]["p01"], tf.float32) + 1e-8) - 1,
-                            -1, 1
-                        ),
-                        traj[traj_key]
-                    )
+            else:'''
+            # Handling for non-action keys (e.g., proprio) remains the same
+            mask = metadata[key].get("mask", tf.ones_like(metadata[key]["mean"], dtype=tf.bool))
+            if normalization_type == NormalizationType.NORMAL:
+                traj[traj_key] = tf.where(
+                    mask,
+                    (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["mean"], tf.float32)) / 
+                    (tf.cast(metadata[key]["std"], tf.float32) + 1e-8),
+                    traj[traj_key]
+                )
+            elif normalization_type == NormalizationType.BOUNDS:
+                traj[traj_key] = tf.where(
+                    mask,
+                    tf.clip_by_value(
+                        2 * (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["p01"], tf.float32)) /
+                        (tf.cast(metadata[key]["p99"], tf.float32) - tf.cast(metadata[key]["p01"], tf.float32) + 1e-8) - 1,
+                        -5, 5
+                    ),
+                    traj[traj_key]
+                )
     except Exception as e:
         logging.error(f"Error in normalize_action_and_proprio: {str(e)}")
         raise

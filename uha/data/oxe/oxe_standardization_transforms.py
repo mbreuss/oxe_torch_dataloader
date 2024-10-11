@@ -368,7 +368,10 @@ def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def compute_dataset_statistics(dataset, action_normalization_mask):
+    print('----------------------')
+    print('inside compute_dataset_statistics')
     print(action_normalization_mask)
+    print('----------------------')
     action_stats = {
         'mean': tf.zeros(76, dtype=tf.float32),
         'std': tf.ones(76, dtype=tf.float32),
