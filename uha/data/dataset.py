@@ -394,7 +394,7 @@ def make_dataset_from_rlds(
         - dataset_name                  # name of the dataset
     """
     REQUIRED_KEYS = {"observation", "action"}
-    force_recompute_dataset_statistics = True
+    # force_recompute_dataset_statistics = True
 
     def restructure(traj):
         # apply a standardization function, if provided
