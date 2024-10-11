@@ -197,6 +197,9 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.JOINT_POS,
         "language_key": "language_instruction*",
         "dataset_size_limit": 1000,
+        "filter_functions": [
+            ModuleSpec.create("uha.data.utils.data_utils:filter_success_droid")
+        ],
         # "shuffle": False,
     },
     "fractal20220817_data": {
@@ -631,6 +634,7 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT_BIMANUAL,
         "action_encoding": ActionEncoding.JOINT_POS_BIMANUAL_NAV,
+        "num_arms": 2,
         # "data_dir": "~/tensorflow_datasets",
         # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
     },

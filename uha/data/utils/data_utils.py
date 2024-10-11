@@ -652,3 +652,9 @@ def allocate_threads(n: Optional[int], weights: np.ndarray):
     for i in np.argsort(fractional)[::-1][: int(n)]:
         allocation[i] += 1
     return allocation
+
+def filter_success_droid(trajectory: dict[str, any]):
+    # only keep DROID trajectories that have "success" in the file path
+    return tf.strings.regex_full_match(
+        trajectory["traj_metadata"]["episode_metadata"]["file_path"][0], ".*/success/.*"
+    )

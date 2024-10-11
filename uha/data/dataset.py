@@ -325,6 +325,7 @@ def make_dataset_from_rlds(
     dataset_size_limit: int = None,
     use_unified_action: bool = False,
     unified_action_dim: int = 76,
+    num_arms: int = 1,
 ) -> Tuple[dl.DLataset, dict]:
     """This function is responsible for loading a specific RLDS dataset from storage and getting it into a
     standardized format. Yields a dataset of trajectories. Does not include CPU-intensive operations.
@@ -426,9 +427,7 @@ def make_dataset_from_rlds(
 
         # add timestep info
         new_obs["timestep"] = tf.range(traj_len)
-        # new_obs['robot_type'] = old_obs['robot_information']
 
-        # extracts `language_key` into the "task" dict, or samples uniformly if `language_key` fnmatches multiple keys
         task = {}
 
         if Gt_ann_dirs is not None and NILS_ann_dirs is not None:
@@ -479,7 +478,7 @@ def make_dataset_from_rlds(
                     f"Language key {local_lang_key} has dtype {task['language_instruction'].dtype}, "
                     "but it must be tf.string."
                 )
-        
+        print(old_obs.keys())
         # Use convert_scalar_to_1d to expand robot_information to match the batch size of language_instruction
         try:
             robot_info = old_obs['robot_information']
@@ -516,7 +515,6 @@ def make_dataset_from_rlds(
             print(f"Error adding robot_information to task dict: {e}")
         # print("Task dict keys after adding robot_information:", task.keys())
         # print("Robot information in task dict shape:", tf.shape(task['robot_information']))
-
         # Debug prints
         # print('--------------------------------------')
         # print(task["language_instruction"], task["language_instruction"].dtype, task["language_instruction"].shape)
@@ -694,10 +692,13 @@ def make_interleaved_dataset(
     for dataset_kwargs in dataset_kwargs_list:
         # Get action_space_index from kwargs
         action_space_index = dataset_kwargs.pop('action_space_index', None)
-        
+        print('-------------')
+        print(action_space_index)    
         # Reconstruct robot_type, control_mode, and num_arms from action_space_index
         robot_type, control_mode, num_arms = get_robot_info_from_index(action_space_index)
-        
+        print('-------------')
+        print(robot_type, control_mode, num_arms)
+        print('-------------')
         dataset, dataset_statistics = make_dataset_from_rlds(**dataset_kwargs, train=train)
         dataset_sizes.append(dataset_statistics["num_transitions"])
         assert (
@@ -754,17 +755,7 @@ def make_interleaved_dataset(
             num_parallel_calls=threads,
             train=train,
         ).flatten(num_parallel_calls=threads)
-        
-        # Apply unified action vector if needed
-        '''dataset = dataset.map(
-            lambda x: apply_unified_action_vector(
-                x,
-                dataset_stats["robot_type"],
-                dataset_stats["control_mode"],
-                dataset_stats["unified_action_stats"]
-            ),
-            num_parallel_calls=threads
-        )'''
+ 
         datasets.append(dataset)
 
     dataset: dl.DLataset = dl.DLataset.sample_from_datasets(
