@@ -286,17 +286,18 @@ SIMPLER_LIBERO_ALL = [
 ]
 
 MO_ALL = [
-  # ("libero_spatial_no_noops", 8.0),
-  # ("libero_object_no_noops", 8.0),
-  # ("libero_goal_no_noops", 8.0),
+  ("libero_spatial_no_noops", 8.0),
+  ("libero_object_no_noops", 8.0),
+  ("libero_goal_no_noops", 8.0),
   ("libero_10_no_noops", 8.0),
-  # ("bridge_dataset", 1.0),
-  # ("fractal20220817_data", 1.0),
+  ("bridge_dataset", 1.0),
+  ("fractal20220817_data", 1.0),
   ("robo_set", 0.5),
-  # ("aloha_mobile", 1.0),
+  ("kit_irl_real_kitchen_lang", 8.0),
+  ("aloha_mobile", 1.0),
   # ("aloha_dagger_dataset", 3.0),
-  # ("berkeley_rpt_converted_externally_to_rlds", 1.0),
-  # ("droid", 0.04),
+  ("berkeley_rpt_converted_externally_to_rlds", 1.0),
+  ("droid", 0.1),
 ]
 
 OXE_NAMED_MIXES = {

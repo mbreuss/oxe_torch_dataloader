@@ -43,4 +43,5 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
+    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
     main()

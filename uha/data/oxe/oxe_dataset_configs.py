@@ -174,13 +174,13 @@ OXE_DATASET_CONFIGS = {
         # "shuffle": False,
     },
     "kit_irl_real_kitchen_lang": {
-        "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": "wrist_image"},
+        "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": None},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
         "data_dir": "/home/marcelr/tensorflow_datasets",
         "language_key": "language_instruction*",
-        "control_mode": 'positon',
+        "control_mode": 'position',
         "num_arms": 1,
         # "shuffle": False,
     },
@@ -200,7 +200,7 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
         "language_key": "language_instruction*",
-        "dataset_size_limit": 1000,
+        "dataset_size_limit": 2000,
         "filter_functions": [
             ModuleSpec.create("uha.data.utils.data_utils:filter_success_droid")
         ],
@@ -691,7 +691,7 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
-        "dataset_size_limit": 100,
+        "dataset_size_limit": 1000,
     },
     "rh20t": {
         "image_obs_keys": {
@@ -721,7 +721,7 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.EEF_POS,
         # "data_dir": "~/tensorflow_datasets/modified_libero_rlds",
         "data_dir": "/home/marcelr/tensorflow_datasets/modified_libero_rlds",
-        "action_encoding": 'EEF_POS',
+
         "control_mode": 'velocity',
         "num_arms": 1,
 
@@ -733,7 +733,6 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.EEF_POS,
         # "data_dir": "~/tensorflow_datasets/modified_libero_rlds",
         "data_dir": "/home/marcelr/tensorflow_datasets/modified_libero_rlds",
-        "action_encoding": 'EEF_POS',
         "control_mode": 'velocity',
         "num_arms": 1,
     },
