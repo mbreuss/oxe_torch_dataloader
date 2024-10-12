@@ -201,9 +201,9 @@ OXE_DATASET_CONFIGS = {
         "action_encoding": ActionEncoding.JOINT_POS,
         "language_key": "language_instruction*",
         "dataset_size_limit": 2000,
-        "filter_functions": [
-            ModuleSpec.create("uha.data.utils.data_utils:filter_success_droid")
-        ],
+        # "filter_functions": [
+        #    ModuleSpec.create("uha.data.utils.data_utils:filter_success_droid")
+        #],
         "control_mode": 'position',
         "num_arms": 1,
         # "shuffle": False,
