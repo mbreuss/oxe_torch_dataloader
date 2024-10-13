@@ -1897,6 +1897,8 @@ def rh20t_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=-1,
     )
     # TODO what here??
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    unified_action, original_action = create_unified_action_vector(trajectory['action'], "JOINT_POS", control_mode='position')
     trajectory['unified_action'] = unified_action
     trajectory['original_action'] = original_action
     trajectory['action'] = unified_action

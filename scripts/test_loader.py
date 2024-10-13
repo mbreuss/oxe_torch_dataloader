@@ -26,7 +26,7 @@ def main(cfg: DictConfig):
     generator = iter(dataloader)
     time.sleep(5)
     # for sample in dataloader:
-    for step in tqdm(range(50)):
+    for step in tqdm(range(50000)):
         sample = next(generator)
         # print("Top-level keys: ", sample.keys())
         # print("rgb_obs keys: ", sample["rgb_obs"].keys())
@@ -41,6 +41,7 @@ def main(cfg: DictConfig):
         # print("observation_proprio shape: ", sample["observation"]["proprio"].shape)
         # break
 
+    print('done')
 
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = "3"

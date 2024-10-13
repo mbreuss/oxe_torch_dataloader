@@ -250,6 +250,8 @@ OXE_DATASET_CONFIGS = {
         },
         "proprio_encoding": ProprioEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "jaco_play": {
         "image_obs_keys": {
@@ -260,6 +262,8 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "berkeley_cable_routing": {
         "image_obs_keys": {
@@ -270,6 +274,8 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "roboturk": {
         "image_obs_keys": {"primary": "front_rgb", "secondary": None, "wrist": None},
@@ -292,6 +298,8 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "berkeley_autolab_ur5": {
         "image_obs_keys": {
@@ -374,6 +382,8 @@ OXE_DATASET_CONFIGS = {
         },
         "proprio_encoding": ProprioEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "maniskill_dataset_converted_externally_to_rlds": {
         "image_obs_keys": {
@@ -398,6 +408,8 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_QUAT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "cmu_franka_exploration_dataset_converted_externally_to_rlds": {
         "image_obs_keys": {
@@ -692,6 +704,8 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
         "dataset_size_limit": 1000,
+        "control_mode": 'position',
+        "num_arms": 1,
     },
     "rh20t": {
         "image_obs_keys": {
@@ -702,6 +716,8 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
+        "control_mode": 'velocity',
+        "num_arms": 1,
     },
     "mujoco_manip": {
         "image_obs_keys": {

@@ -294,16 +294,23 @@ MO_ALL = [
   ("fractal20220817_data", 0.6),
   ("robo_set", 0.5),
   ("kit_irl_real_kitchen_lang", 10.0),
-  ("aloha_mobile", 2.0),
+  ("aloha_mobile", 0.5),
   # ("aloha_dagger_dataset", 3.0),
+  ("bc_z", 0.1),
   ("berkeley_rpt_converted_externally_to_rlds", 1.0),
-  ("droid", 0.04),
+  ("berkeley_mvp_converted_externally_to_rlds", 0.5),
+  ("dobbe", 0.5),
+  # ("droid", 0.04),
 ]
 
 MO_ALL = [
-  ("kit_irl_real_kitchen_lang", 10.0),
-  ("aloha_mobile", 2.0),
-]
+  # ("cmu_play_fusion", 1.0),
+  # ("berkeley_mvp_converted_externally_to_rlds", 1.0),
+  # ("bc_z", 0.2),
+  # ("kit_irl_real_kitchen_lang", 10.0),
+  ("dobbe", 1.0),
+  # ("aloha_mobile", 2.0),
+ ]
 
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
