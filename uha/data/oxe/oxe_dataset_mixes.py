@@ -303,14 +303,14 @@ MO_ALL = [
   # ("droid", 0.04),
 ]
 
-MO_ALL = [
+#MO_ALL = [
   # ("cmu_play_fusion", 1.0),
   # ("berkeley_mvp_converted_externally_to_rlds", 1.0),
   # ("bc_z", 0.2),
   # ("kit_irl_real_kitchen_lang", 10.0),
-  ("dobbe", 1.0),
+#  ("dobbe", 1.0),
   # ("aloha_mobile", 2.0),
- ]
+# ]
 
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
