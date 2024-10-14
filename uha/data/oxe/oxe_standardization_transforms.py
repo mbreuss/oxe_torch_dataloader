@@ -49,7 +49,7 @@ def get_robot_info_from_index(action_space_index):
     
     return index_mapping.get(action_space_index, ('EEF_POS', 'velocity', 1))  
 
-def get_action_space_index(robot_type, num_arms, control_mode='position'):
+def get_action_space_index(robot_type, num_arms, control_mode='position', return_tensor=True):
     # Validate num_arms input
     if num_arms not in [1, 2]:
         raise ValueError("num_arms must be either 1 or 2")
@@ -71,9 +71,11 @@ def get_action_space_index(robot_type, num_arms, control_mode='position'):
     
     if index is None:
         raise ValueError(f"Unsupported combination of robot_type: {robot_type}, control_mode: {control_mode}, and num_arms: {num_arms}")
-    
-    # Convert to TensorFlow tensor
-    return tf.constant(index, dtype=tf.int32)
+    if return_tensor:
+        # Convert to TensorFlow tensor
+        return tf.constant(index, dtype=tf.int32)
+    else:
+        return index
 
 
 def create_action_normalization_mask(robot_type, control_mode='position'):
@@ -901,22 +903,37 @@ def toto_dataset_transform_eef(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def toto_dataset_transform_joint(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    # Get the shapes of the tensors
+    state_shape = tf.shape(trajectory["observation"]["state"])
+    gripper_shape = tf.shape(trajectory["action"]["open_gripper"])
+    
+    # Ensure the gripper action has the correct shape
+    gripper_action = tf.reshape(trajectory["action"]["open_gripper"], [gripper_shape[0], 1])
+    
+    # Concatenate the tensors
     joint_actions = tf.concat(
         (
             trajectory["observation"]["state"][1:, :],
-            tf.cast(trajectory["action"]["open_gripper"][:-1, None], tf.float32),
+            tf.cast(gripper_action[:-1, :], tf.float32),
         ),
         axis=-1,
     )
+    
     traj_truncated = tf.nest.map_structure(lambda x: x[:-1], trajectory)
     traj_truncated["action"] = joint_actions
     traj_truncated["observation"]["proprio"] = traj_truncated["observation"]["state"]
     traj_truncated["language_instruction"] = tf.fill(
         tf.shape(traj_truncated["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
-    trajectory['action'] = create_unified_action_vector(trajectory['action'], "JOINT_POS", control_mode='position')
-    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
+    traj_truncated["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    
+    # Create unified action vector with the correct dimensions
+    unified_action, original_action = create_unified_action_vector(traj_truncated['action'], "JOINT_POS", control_mode='position')
+    traj_truncated['unified_action'] = unified_action
+    traj_truncated['original_action'] = original_action
+    traj_truncated['action'] = unified_action
+    traj_truncated['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
+    
     return traj_truncated
 
 
@@ -1882,6 +1899,8 @@ def roboset_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def rh20t_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    print(trajectory.keys())
+    print(trajectory['action'].keys())
     trajectory["action"] = tf.concat(
         (
             trajectory["action"]["tcp_base"],
