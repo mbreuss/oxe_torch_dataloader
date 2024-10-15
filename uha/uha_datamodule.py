@@ -15,6 +15,7 @@ class UhaDataModule:
             drop_last: bool = False,
             transforms: DictConfig = None,  # Replace with your default transforms
             language_encoders: DictConfig = None,
+            use_global_norm= False,
             **kwargs,
     ):
         self.batch_size = batch_size

@@ -462,50 +462,6 @@ def normalize_unified_action(x, metadata_key, metadata, normalization_type):
         logging.error(f"Error in normalize_unified_action: {str(e)}")
         raise
 
-@tf.autograph.experimental.do_not_convert
-def normalize_action_and_proprio(traj: dict, metadata: dict, normalization_type: NormalizationType):
-    keys_to_normalize = {
-        "action": "action",
-    }
-    if "proprio" in traj["observation"]:
-        keys_to_normalize["proprio"] = "observation/proprio"
-
-    try:
-        print('inside normalize_action_and_proprio')
-        for key, traj_key in keys_to_normalize.items():
-
-            print('---------------------')
-            print(key)
-            print('---------------------')
-
-
-            '''if key == "action":
-                traj[traj_key] = normalize_unified_action(traj[traj_key], key, metadata, normalization_type)
-            else:'''
-            # Handling for non-action keys (e.g., proprio) remains the same
-            mask = metadata[key].get("mask", tf.ones_like(metadata[key]["mean"], dtype=tf.bool))
-            if normalization_type == NormalizationType.NORMAL:
-                traj[traj_key] = tf.where(
-                    mask,
-                    (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["mean"], tf.float32)) / 
-                    (tf.cast(metadata[key]["std"], tf.float32) + 1e-8),
-                    traj[traj_key]
-                )
-            elif normalization_type == NormalizationType.BOUNDS:
-                traj[traj_key] = tf.where(
-                    mask,
-                    tf.clip_by_value(
-                        2 * (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["p01"], tf.float32)) /
-                        (tf.cast(metadata[key]["p99"], tf.float32) - tf.cast(metadata[key]["p01"], tf.float32) + 1e-8) - 1,
-                        -5, 5
-                    ),
-                    traj[traj_key]
-                )
-    except Exception as e:
-        logging.error(f"Error in normalize_action_and_proprio: {str(e)}")
-        raise
-
-    return traj
 
 
 def binarize_gripper_actions(actions: tf.Tensor, open_boundary: float = 0.95, close_boundary: float = 0.05) -> tf.Tensor:
@@ -666,3 +622,86 @@ def filter_success_droid(trajectory: dict[str, any]):
     return tf.strings.regex_full_match(
         trajectory["traj_metadata"]["episode_metadata"]["file_path"][0], ".*/success/.*"
     )
+
+
+'''def normalize_unified_action(traj: dict, metadata: dict, normalization_type: NormalizationType):
+    unified_action = traj['action']
+    
+    if normalization_type == NormalizationType.NORMAL:
+        mean = tf.constant(metadata['unified_action_stats']['mean'], dtype=tf.float32)
+        std = tf.constant(metadata['unified_action_stats']['std'], dtype=tf.float32)
+        traj['unified_action'] = (unified_action - mean) / (std + 1e-8)
+    elif normalization_type == NormalizationType.BOUNDS:
+        min_val = tf.constant(metadata['unified_action_stats']['min'], dtype=tf.float32)
+        max_val = tf.constant(metadata['unified_action_stats']['max'], dtype=tf.float32)
+        traj['unified_action'] = tf.clip_by_value(
+            2 * (unified_action - min_val) / (max_val - min_val + 1e-8) - 1,
+            -2, 2
+        )
+    
+    return traj'''
+
+def normalize_action_and_proprio(traj: dict, metadata: dict, normalization_type: NormalizationType):
+    keys_to_normalize = {
+        "action": "action",
+    }
+    if "proprio" in traj["observation"]:
+        keys_to_normalize["proprio"] = "observation/proprio"
+
+    for key, traj_key in keys_to_normalize.items():
+        if key == "action":
+            mask = metadata[key].get("mask", tf.ones_like(metadata[key]["mean"], dtype=tf.bool))
+        else:
+            mask = tf.ones_like(metadata[key]["mean"], dtype=tf.bool)
+
+        if normalization_type == NormalizationType.NORMAL:
+            traj[traj_key] = tf.where(
+                mask,
+                (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["mean"], tf.float32)) / 
+                (tf.cast(metadata[key]["std"], tf.float32) + 1e-8),
+                traj[traj_key]
+            )
+        elif normalization_type == NormalizationType.BOUNDS:
+            traj[traj_key] = tf.where(
+                mask,
+                tf.clip_by_value(
+                    2 * (tf.cast(traj[traj_key], tf.float32) - tf.cast(metadata[key]["min"], tf.float32)) /
+                    (tf.cast(metadata[key]["max"], tf.float32) - tf.cast(metadata[key]["min"], tf.float32) + 1e-8) - 1,
+                    -2, 2
+                ),
+                traj[traj_key]
+            )
+
+    return traj
+
+
+
+def compute_global_unified_action_stats(datasets):
+    global_stats = {
+        'sum': tf.zeros([76], dtype=tf.float32),
+        'sum_squared': tf.zeros([76], dtype=tf.float32),
+        'min': tf.fill([76], tf.float32.max),
+        'max': tf.fill([76], tf.float32.min),
+        'count': 0
+    }
+
+    for dataset in datasets:
+        for traj in dataset:
+            unified_action = traj['action']
+            global_stats['sum'] += tf.reduce_sum(unified_action, axis=0)
+            global_stats['sum_squared'] += tf.reduce_sum(tf.square(unified_action), axis=0)
+            global_stats['min'] = tf.minimum(global_stats['min'], tf.reduce_min(unified_action, axis=0))
+            global_stats['max'] = tf.maximum(global_stats['max'], tf.reduce_max(unified_action, axis=0))
+            global_stats['count'] += tf.shape(unified_action)[0]
+
+    count = tf.cast(global_stats['count'], tf.float32)
+    mean = global_stats['sum'] / count
+    variance = (global_stats['sum_squared'] / count) - tf.square(mean)
+    std = tf.sqrt(tf.maximum(variance, 0))
+
+    return {
+        'mean': mean.numpy(),
+        'std': std.numpy(),
+        'min': global_stats['min'].numpy(),
+        'max': global_stats['max'].numpy()
+    }

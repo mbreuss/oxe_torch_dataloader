@@ -318,7 +318,7 @@ def make_dataset_from_rlds(
     force_recompute_dataset_statistics: bool = False,
     action_normalization_mask: Optional[Sequence[bool]] = None,
     filter_functions: Sequence[ModuleSpec] = (),
-    skip_norm: bool = False,
+    skip_norm: bool = True,
     ignore_errors: bool = False,
     num_parallel_reads: int = tf.data.AUTOTUNE,
     num_parallel_calls: int = tf.data.AUTOTUNE,
@@ -785,5 +785,4 @@ def make_interleaved_dataset(
     dataset.sample_weights = sample_weights
     dataset.dataset_len = dataset_len
     return dataset
-
 

@@ -408,7 +408,6 @@ def compute_dataset_statistics(dataset, action_normalization_mask):
     
     # Add debugging information
     first_element = next(iter(dataset))
-    print(f"First element action shape: {tf.shape(first_element['action'])}")
     print(f"Normalized dims: {normalized_dims}")
     
     try:
