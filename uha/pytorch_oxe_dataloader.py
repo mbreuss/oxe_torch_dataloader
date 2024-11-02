@@ -1,207 +1,294 @@
 """
-This example shows how to use the `octo.data` dataloader with PyTorch by wrapping it in a simple PyTorch
-dataloader. The config below also happens to be our exact pretraining config (except for the batch size and
-shuffle buffer size, which are reduced for demonstration purposes).
+PyTorch dataloader implementation for Open X-Embodiment datasets.
+Provides efficient data loading and processing for PyTorch training.
 """
+
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, Callable, Union
+import logging
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
-from uha.data.utils.data_utils import hydra_get_object
-from uha.data.language_encoders.no_encoder import NoEncoder
+from torch.utils.data import IterableDataset, DataLoader
 from dlimp.dataset import DLataset
 
+from uha.data.utils.data_utils import hydra_get_object
+from uha.data.language_encoders.no_encoder import NoEncoder
 
-class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
-    """Thin wrapper around RLDS dataset for use with PyTorch dataloaders."""
+logger = logging.getLogger(__name__)
 
-    def __init__(
-            self,
-            rlds_dataset: DLataset,
-            train=True,
-            transform_dict = None,
-            language_encoder: nn.Module = NoEncoder(),
-            is_single_dataset: bool = False,
-    ):
-        super(TorchRLDSIterableDataset).__init__()
-        self._rlds_dataset = rlds_dataset
-        self._is_train = train
-        self._language_encoder = language_encoder
-        self._is_single_dataset = is_single_dataset
-        self._current_length = 0
-        self._key_remapping = transform_dict["key_remapping"] if transform_dict is not None and "key_remapping" in transform_dict else None
-        self._move_axis = transform_dict["move_axis"] if transform_dict is not None and "move_axis" in transform_dict else True
-        self._add_empty_key = transform_dict["add_empty_key"] if transform_dict is not None and "add_empty_key" in transform_dict else []
-        self._adjust_type = transform_dict["adjust_type"] if transform_dict is not None and "adjust_type" in transform_dict else None
-        self._bytes_to_string = transform_dict["bytes_to_string"] if transform_dict is not None and "bytes_to_string" in transform_dict else True
-        self._add_robot_information = transform_dict["add_robot_information"] if transform_dict is not None and "add_robot_information" in transform_dict else False
 
-    def __iter__(self):
-        for sample in self._rlds_dataset.iterator(prefetch=2048): # batchsize
-        # for sample in self._rlds_dataset.as_numpy_iterator():
-            if self._is_single_dataset: # yield only 1 element of trajectorie
-                self._current_length = sample["action"].shape[0]
-                for i in range(self._current_length):
-                    sub_batch = self.limit_size(sample, dict(), i)
-                    yield self.remap_sample(self.transform_sample(sub_batch))
+@dataclass
+class DataloaderConfig:
+    """Configuration for PyTorch dataloader."""
+    batch_size: int = 32
+    num_workers: int = 0
+    pin_memory: bool = False
+    drop_last: bool = False
+    prefetch_factor: int = 8
+    is_single_dataset: bool = False
 
-            else:
-                sample = self.transform_sample(sample)
-                # moved _key_remapping into transform_sample
-                yield self.remap_sample(sample)
 
-    def __len__(self):
-        if hasattr(self._rlds_dataset, "dataset_len"):
-            # print("dataset_len called", self._rlds_dataset.dataset_len)
-            return self._rlds_dataset.dataset_len
-        lengths = np.array(
-            [
-                stats["num_transitions"]
-                for stats in self._rlds_dataset.dataset_statistics
-            ]
-        )
-        if hasattr(self._rlds_dataset, "sample_weights"):
-            lengths = np.array(self._rlds_dataset.sample_weights) * lengths
-        total_len = lengths.sum()
-        # print("num_transitions called", total_len)
-        if self._is_train:
-            return int(0.95 * total_len)
-        else:
-            return int(0.05 * total_len)
+@dataclass
+class TransformConfig:
+    """Configuration for data transformations."""
+    key_remapping: Optional[Dict[str, Any]] = None
+    move_axis: bool = True
+    add_empty_key: tuple = ()
+    adjust_type: Optional[str] = None
+    bytes_to_string: bool = True
+    add_robot_information: bool = False
 
-    def limit_size(self, sample, sub_batch, index):
-        if isinstance(sample, np.ndarray):
-            return sample[index] # if index <= self._current_length-1 else (None, sample[:])
-        else:
-            for key in sample:
-                sub_batch[key] = self.limit_size(sample[key], sub_batch[key] if key in sub_batch else dict(), index)
-            return sub_batch
 
-    def transform_sample(self, sample):
-        dicts = ["observation", "task", "future_obs"]
-        if self._move_axis:
-            for key in dicts:
-                if not key in sample:
-                    continue
-                if "image_primary" in sample[key]:
-                    sample[key]["image_primary"] = np.moveaxis(sample[key]["image_primary"], -1, -3)
-                if "image_secondary" in sample[key]:
-                    sample[key]["image_secondary"] = np.moveaxis(sample[key]["image_secondary"], -1, -3)
-                if "image_wrist" in sample[key]:
-                    sample[key]["image_wrist"] = np.moveaxis(sample[key]["image_wrist"], -1, -3)
+class ImageProcessor:
+    """Handles image processing operations."""
 
-        if self._adjust_type is not None:
-            dtype = hydra_get_object(self._adjust_type)
+    @staticmethod
+    def move_channel_axis(image: np.ndarray) -> np.ndarray:
+        """Move channel axis to PyTorch format (CHW)."""
+        return np.moveaxis(image, -1, -3)
+
+
+class TransformProcessor:
+    """Handles data transformation operations."""
+
+    def __init__(self, config: TransformConfig):
+        self.config = config
+        self.image_processor = ImageProcessor()
+
+    def process_images(self, sample: Dict[str, Any], key: str) -> None:
+        """Process images in sample dictionary."""
+        if self.config.move_axis:
+            for img_key in ["image_primary", "image_secondary", "image_wrist"]:
+                if img_key in sample[key]:
+                    sample[key][img_key] = self.image_processor.move_channel_axis(
+                        sample[key][img_key]
+                    )
+
+    def adjust_action_type(self, sample: Dict[str, Any]) -> None:
+        """Adjust action data type if specified."""
+        if self.config.adjust_type:
+            dtype = hydra_get_object(self.config.adjust_type)
             sample["action"] = sample["action"].astype(dtype)
 
-        if self._bytes_to_string:
-            # if self._is_single_dataset:
-                # if sample["task"]["pad_mask_dict"]["language_instruction"][0][0]:
-                #     sample["task"]["language_instruction"] = sample["task"]["language_instruction"][0][0].decode("utf-8")
-                #     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
-                # else:
-                #     sample["task"]["language_instruction"] = self._language_encoder("")
-                # sample["task"]["language_instruction"] = self._vectorized_lang_encoder(sample["task"]["language_instruction"])
+    def process_language(self, sample: Dict[str, Any], 
+                        language_encoder: nn.Module) -> None:
+        """Process language data in sample."""
+        if not self.config.bytes_to_string:
+            return
 
-                # sample["task"]["language_instruction"] = self._language_encoder(
-                #     [s.decode("utf-8") for s in sample["task"]["language_instruction"]]
-                # )
-                    
-            # else:
-                # print(sample["task"]["language_instruction"])
-                if sample["task"]["pad_mask_dict"]["language_instruction"]:
-                    sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
-                    sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
-                else:
-                    sample["task"]["language_instruction"] = self._language_encoder("")
+        if sample["task"]["pad_mask_dict"]["language_instruction"]:
+            text = sample["task"]["language_instruction"].decode("utf-8")
+            sample["task"]["language_instruction"] = language_encoder(text)
+        else:
+            sample["task"]["language_instruction"] = language_encoder("")
 
-        if "robot_information" in sample["observation"]:
-            if self._add_robot_information:
-                sample["observation"]["robot_information"] = self._language_encoder(sample["observation"]["robot_information"])
-            else:
-                del sample["observation"]["robot_information"]
+    def process_robot_info(self, sample: Dict[str, Any], 
+                          language_encoder: nn.Module) -> None:
+        """Process robot information in sample."""
+        if "robot_information" not in sample["observation"]:
+            return
 
-        return sample
-    
-    def remap_sample(self, sample):
-        if self._key_remapping is None:
-            if len(self._add_empty_key) != 0:
-                for key in self._add_empty_key:
+        if self.config.add_robot_information:
+            sample["observation"]["robot_information"] = language_encoder(
+                sample["observation"]["robot_information"]
+            )
+        else:
+            del sample["observation"]["robot_information"]
+
+    def remap_keys(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        """Remap dictionary keys according to configuration."""
+        if not self.config.key_remapping:
+            if self.config.add_empty_key:
+                for key in self.config.add_empty_key:
                     sample[key] = {}
             if "dataset_name" in sample:
                 del sample["dataset_name"]
             return sample
+
+        transformed = {}
+        if self.config.add_empty_key:
+            for key in self.config.add_empty_key:
+                transformed[key] = {}
+
+        # Process remapping
+        for old_key, value in self.config.key_remapping.items():
+            if isinstance(value, dict):
+                self._process_nested_remapping(transformed, sample, old_key, value)
+            else:
+                self._process_single_remapping(transformed, sample, old_key, value)
+
+        return transformed
+
+    def _process_nested_remapping(self, transformed: Dict, sample: Dict, 
+                                old_key: str, value: Dict) -> None:
+        """Process nested key remapping."""
+        for second_old_key, new_value in value.items():
+            if isinstance(new_value, list):
+                if len(new_value) == 2:
+                    transformed.setdefault(new_value[0], {})[new_value[1]] = \
+                        sample[old_key][second_old_key]
+                elif len(new_value) == 1:
+                    transformed[new_value[0]] = sample[old_key][second_old_key]
+            else:
+                transformed[new_value] = sample[old_key][second_old_key]
+
+    def _process_single_remapping(self, transformed: Dict, sample: Dict,
+                                old_key: str, value: Union[str, list]) -> None:
+        """Process single key remapping."""
+        if isinstance(value, list):
+            if len(value) == 2:
+                transformed.setdefault(value[0], {})[value[1]] = sample[old_key]
+            elif len(value) == 1:
+                transformed[value[0]] = sample[old_key]
         else:
-            transformed_sample = {}
-            if len(self._add_empty_key) != 0:
-                for key in self._add_empty_key:
-                    transformed_sample[key] = {}
-            # { observation: { image_primary: ["rgb_obs", "rgb_static"], ... }, ...}
-            for old_key, value in self._key_remapping.items():
-                if isinstance(value, dict):
-                    for second_old_key, new_value in value.items():
-                        if isinstance(new_value, list) and len(new_value) == 2:
-                            transformed_sample[new_value[0]][new_value[1]] = sample[old_key][second_old_key]
-                        elif isinstance(new_value, list) and len(new_value) == 1:
-                            transformed_sample[new_value[0]] = sample[old_key][second_old_key]
-                        else:
-                            transformed_sample[new_value] = sample[old_key][second_old_key]
-                else:
-                    if isinstance(value, list) and len(value) == 2:
-                        transformed_sample[value[0]][value[1]] = sample[old_key]
-                    elif isinstance(value, list) and len(value) == 1:
-                        transformed_sample[value[0]] = sample[old_key]
-                    else:
-                        transformed_sample[value] = sample[old_key]
+            transformed[value] = sample[old_key]
 
-            return transformed_sample
 
-class TorchRLDSIterableDatasetTF(torch.utils.data.IterableDataset):
-    """Thin wrapper around RLDS dataset for use with PyTorch dataloaders."""
+class TorchRLDSIterableDataset(IterableDataset):
+    """PyTorch IterableDataset wrapper for RLDS datasets."""
 
     def __init__(
             self,
             rlds_dataset: DLataset,
-            train=True,
-            transform_dict = None,
-            language_encoder: nn.Module = NoEncoder(),
+            transform_config: Optional[TransformConfig] = None,
+            language_encoder: Optional[nn.Module] = None,
             is_single_dataset: bool = False,
+            train: bool = True
     ):
-        super(TorchRLDSIterableDatasetTF).__init__()
-        self._rlds_dataset = rlds_dataset
-        self._is_train = train
-        self._language_encoder = language_encoder
-        self._is_single_dataset = is_single_dataset
-        self._current_length = 0
+        super().__init__()
+        self.rlds_dataset = rlds_dataset
+        self.transform_config = transform_config or TransformConfig()
+        self.language_encoder = language_encoder or NoEncoder()
+        self.is_single_dataset = is_single_dataset
+        self.is_train = train
+        self.current_length = 0
+        
+        self.transform_processor = TransformProcessor(self.transform_config)
 
     def __iter__(self):
-        rlds_iter = map(self.process_batch, self._rlds_dataset.iterator()) # prefetch=1024
-        for sample in rlds_iter: # 4 * batchsize
-        # for sample in self._rlds_dataset.as_numpy_iterator():
-            yield sample
+        """Iterate over dataset with transformations."""
+        for sample in self.rlds_dataset.iterator(prefetch=2048):
+            if self.is_single_dataset:
+                self.current_length = sample["action"].shape[0]
+                for i in range(self.current_length):
+                    sub_batch = self._limit_size(sample, {}, i)
+                    yield self.transform_processor.remap_keys(
+                        self._transform_sample(sub_batch)
+                    )
+            else:
+                sample = self._transform_sample(sample)
+                yield self.transform_processor.remap_keys(sample)
 
-    def __len__(self):
-        if hasattr(self._rlds_dataset, "dataset_len"):
-            # print("dataset_len called", self._rlds_dataset.dataset_len)
-            return self._rlds_dataset.dataset_len
-        lengths = np.array(
-            [
-                stats["num_transitions"]
-                for stats in self._rlds_dataset.dataset_statistics
-            ]
-        )
-        if hasattr(self._rlds_dataset, "sample_weights"):
-            lengths = np.array(self._rlds_dataset.sample_weights) * lengths
-        total_len = lengths.sum()
-        # print("num_transitions called", total_len)
-        if self._is_train:
-            return int(0.95 * total_len)
-        else:
-            return int(0.05 * total_len)
+    def __len__(self) -> int:
+        """Get dataset length."""
+        if hasattr(self.rlds_dataset, "dataset_len"):
+            return self.rlds_dataset.dataset_len
 
-    def process_batch(self, batch):
-        if isinstance(self._language_encoder, NoEncoder):
-            batch["task"].pop("language_instruction")
-        else:
-            batch["task"]["language_instruction"] = self._language_encoder(batch["task"]["language_instruction"].decode("utf-8"))
-        del batch["dataset_name"]
-        return batch
+        lengths = np.array([
+            stats["num_transitions"]
+            for stats in self.rlds_dataset.dataset_statistics
+        ])
+        
+        if hasattr(self.rlds_dataset, "sample_weights"):
+            lengths = np.array(self.rlds_dataset.sample_weights) * lengths
+            
+        total_len = int(lengths.sum())
+        return int(0.95 * total_len) if self.is_train else int(0.05 * total_len)
+
+    def _limit_size(self, sample: Any, sub_batch: Dict, index: int) -> Dict:
+        """Process sample size limitations."""
+        if isinstance(sample, np.ndarray):
+            return sample[index]
+            
+        return {
+            key: self._limit_size(value, sub_batch.get(key, {}), index)
+            for key, value in sample.items()
+        }
+
+    def _transform_sample(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply all transformations to sample."""
+        # Process images
+        for key in ["observation", "task", "future_obs"]:
+            if key in sample:
+                self.transform_processor.process_images(sample, key)
+
+        # Adjust action type
+        self.transform_processor.adjust_action_type(sample)
+
+        # Process language data
+        self.transform_processor.process_language(sample, self.language_encoder)
+
+        # Process robot information
+        self.transform_processor.process_robot_info(sample, self.language_encoder)
+
+        return sample
+
+
+def create_dataloader(
+        dataset: DLataset,
+        config: DataloaderConfig,
+        transform_config: Optional[TransformConfig] = None,
+        language_encoder: Optional[nn.Module] = None,
+        main_process: bool = False,
+        train: bool = True
+) -> DataLoader:
+    """Create PyTorch DataLoader with configuration."""
+    torch_dataset = TorchRLDSIterableDataset(
+        rlds_dataset=dataset,
+        transform_config=transform_config,
+        language_encoder=language_encoder,
+        is_single_dataset=config.is_single_dataset,
+        train=train
+    )
+
+    # Configure workers based on process type
+    effective_workers = config.num_workers if main_process else 0
+
+    return DataLoader(
+        torch_dataset,
+        batch_size=config.batch_size,
+        num_workers=effective_workers,
+        pin_memory=config.pin_memory,
+        drop_last=config.drop_last,
+        prefetch_factor=config.prefetch_factor,
+        shuffle=None if not config.is_single_dataset else False
+    )
+
+
+# Convenience function for multi-worker setup
+def create_multi_worker_dataloader(
+        dataset: DLataset,
+        config: DataloaderConfig,
+        transform_config: Optional[TransformConfig] = None,
+        language_encoder: Optional[nn.Module] = None,
+        main_process: bool = False,
+        train: bool = True
+) -> DataLoader:
+    """Create multi-worker DataLoader with proper initialization."""
+    torch_dataset = TorchRLDSIterableDataset(
+        rlds_dataset=dataset,
+        transform_config=transform_config,
+        language_encoder=language_encoder,
+        is_single_dataset=config.is_single_dataset,
+        train=train
+    )
+
+    def worker_init_fn(worker_id: int):
+        worker_info = torch.utils.data.get_worker_info()
+        worker_info.dataset = torch_dataset
+
+    effective_workers = 2 if main_process else 0
+
+    return DataLoader(
+        torch_dataset,
+        batch_size=config.batch_size,
+        num_workers=effective_workers,
+        pin_memory=config.pin_memory,
+        drop_last=config.drop_last,
+        prefetch_factor=config.prefetch_factor,
+        shuffle=None if not config.is_single_dataset else False,
+        worker_init_fn=worker_init_fn
+    )

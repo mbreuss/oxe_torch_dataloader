@@ -4,7 +4,7 @@ import time
 import hydra
 import numpy as np
 from tqdm import tqdm
-from uha import make_pytorch_oxe_iterable_dataset, get_octo_dataset_tensorflow, get_single_dataset_tensorflow, multi_worker_iterable_dataset
+from uha import make_pytorch_oxe_iterable_dataset, get_octo_dataset_tensorflow, get_single_dataset_tensorflow
 from omegaconf import DictConfig, OmegaConf
 
 
@@ -20,8 +20,8 @@ def main(cfg: DictConfig):
     cfg_transforms = OmegaConf.to_object(cfg.transforms)
     language_encoder = hydra.utils.instantiate(cfg.language_encoders)
     # create Pytorch Train Dataset
-    # dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
-    dataloader = multi_worker_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
+    dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
+    # dataloader = multi_worker_iterable_dataset(dataset, train=True, batch_size=batch_size, transform_dict=cfg_transforms, num_workers=0, pin_memory=True, language_encoder=language_encoder, is_single_dataset=is_single_dataset, main_process=True)
     # dataloader = make_pytorch_oxe_iterable_dataset(dataset, train=True, batch_size=512)
     generator = iter(dataloader)
     time.sleep(5)

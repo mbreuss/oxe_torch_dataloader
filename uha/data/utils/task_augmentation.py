@@ -1,149 +1,233 @@
 """
-Contains basic logic for randomly zero-ing out keys in the task specification.
+Task augmentation and instruction processing utilities.
+Handles random zero-ing of task specifications and instruction rephrasing.
 """
 
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, List, Union
+import logging
 import pickle
+from pathlib import Path
 
-from huggingface_hub import hf_hub_download
 import tensorflow as tf
+from huggingface_hub import hf_hub_download
 
 from uha.data.utils.data_utils import to_padding
 
-
-def delete_and_rephrase(
-    traj,
-    paraphrases_repo: str,
-    paraphrases_filename: str,
-    rephrase_prob: float,
-    keep_image_prob: float,
-):
-    traj = rephrase_instruction(
-        traj, paraphrases_repo, paraphrases_filename, rephrase_prob
-    )
-    traj = delete_task_conditioning(traj, keep_image_prob)
-    return traj
+logger = logging.getLogger(__name__)
 
 
-class Rephraser:
-    def create_static_hash_table(self, dictionary):
-        """Takes a python dictionary with string keys and values and creates a tf static hash table"""
+@dataclass
+class AugmentConfig:
+    """Configuration for task augmentation."""
+    rephrase_prob: float = 0.3
+    keep_image_prob: float = 0.5
+    paraphrases_repo: str = ""
+    paraphrases_filename: str = ""
+
+
+class ParaphraseManager:
+    """Manages paraphrase operations with caching."""
+
+    def __init__(self, repo: str, filename: str):
+        self.repo = repo
+        self.filename = filename
+        self._rephrase_lookup = None
+        self._initialize_paraphrases()
+
+    def _initialize_paraphrases(self):
+        """Initialize paraphrase lookup table."""
+        try:
+            if not self.repo or not self.filename:
+                logger.warning("No paraphrase repository specified")
+                return
+
+            paraphrase_path = hf_hub_download(
+                repo_id=self.repo,
+                filename=self.filename,
+                repo_type="dataset"
+            )
+            
+            with open(paraphrase_path, "rb") as file:
+                paraphrases = pickle.load(file)
+                self._rephrase_lookup = self._create_lookup_table(paraphrases)
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize paraphrases: {str(e)}")
+            self._rephrase_lookup = None
+
+    def _create_lookup_table(self, dictionary: Dict[str, str]) -> tf.lookup.StaticHashTable:
+        """Create TensorFlow lookup table from dictionary."""
         keys = list(dictionary.keys())
         values = list(dictionary.values())
+        
         initializer = tf.lookup.KeyValueTensorInitializer(
-            keys, values, key_dtype=tf.string, value_dtype=tf.string
+            keys, values,
+            key_dtype=tf.string,
+            value_dtype=tf.string
         )
-        hash_table = tf.lookup.StaticHashTable(initializer, default_value="")
-        return hash_table
-
-    def __init__(self, paraphrases_repo: str, paraphrases_filename: str):
-        if isinstance(paraphrases_repo, str) and isinstance(paraphrases_filename, str):
-            with open(
-                hf_hub_download(
-                    repo_id=paraphrases_repo,
-                    filename=paraphrases_filename,
-                    repo_type="dataset",
-                ),
-                "rb",
-            ) as file:
-                lang_paraphrases = pickle.load(file)
-                # Create StaticHashTable
-                self.rephrase_lookup = self.create_static_hash_table(lang_paraphrases)
-
-
-def rephrase_instruction(
-    traj: dict, paraphrases_repo: str, paraphrases_filename: str, rephrase_prob: float
-) -> dict:
-    """Randomly rephrases language instructions with precomputed paraphrases
-    Args:
-       traj: A dictionary containing trajectory data. Should have a "task" key.
-       paraphrases_repo: The name of the HF repo containing the paraphrases file.
-       paraphrases_filename: The name of the file containing the paraphrases.
-       rephrase_prob: The probability of augmenting the language instruction. The probability of keeping the language
-           instruction is 1 - rephrase_prob.
-    """
-    rephraser = Rephraser(paraphrases_repo, paraphrases_filename)
-
-    if "language_instruction" not in traj["task"]:
-        return traj
-    original_language = traj["task"]["language_instruction"]
-    # check the language key is not empty
-    string_is_not_empty = tf.reduce_all(tf.strings.length(original_language) > 0)
-    # check dict is not empty
-    dict_is_not_empty = bool(rephraser.rephrase_lookup)
-    if dict_is_not_empty and string_is_not_empty:
-        rephrased_instruction = rephraser.rephrase_lookup.lookup(original_language[0])
-        rephrased_instruction = tf.where(
-            tf.strings.length(rephrased_instruction) > 0,
-            original_language[0] + "." + rephrased_instruction,
-            original_language[0],
+        
+        return tf.lookup.StaticHashTable(
+            initializer,
+            default_value=""
         )
-        split_tensor = tf.strings.split(rephrased_instruction, sep=".")
-        num_strings = tf.cast(tf.shape(split_tensor)[0], tf.int32)
+
+    def get_paraphrase(self, text: tf.Tensor) -> tf.Tensor:
+        """Get paraphrase for input text."""
+        if self._rephrase_lookup is None:
+            return text
+            
+        paraphrase = self._rephrase_lookup.lookup(text)
+        return tf.where(
+            tf.strings.length(paraphrase) > 0,
+            tf.strings.join([text, paraphrase], separator=". "),
+            text
+        )
+
+    def sample_paraphrase(self, 
+                         text: tf.Tensor,
+                         rephrase_prob: float) -> tf.Tensor:
+        """Sample between original and paraphrased text."""
+        if self._rephrase_lookup is None:
+            return text
+
+        paraphrased = self.get_paraphrase(text[0])
+        split_phrases = tf.strings.split(paraphrased, sep=".")
+        num_phrases = tf.shape(split_phrases)[0]
+        
         random_index = tf.random.uniform(
-            (tf.shape(original_language)[0],),
+            tf.shape(text),
             minval=0,
-            maxval=num_strings,
-            dtype=tf.int32,
+            maxval=num_phrases,
+            dtype=tf.int32
         )
-        sampled_language = tf.gather(split_tensor, random_index)
-        rand = tf.random.uniform(shape=(), minval=0, maxval=1, dtype=tf.float32)
-        sampled_language = tf.where(
-            rand < rephrase_prob,
-            sampled_language,
-            original_language,
+        
+        sampled = tf.gather(split_phrases, random_index)
+        return tf.where(
+            tf.random.uniform(shape=()) < rephrase_prob,
+            sampled,
+            text
         )
-        traj["task"]["language_instruction"] = sampled_language
-    return traj
+
+
+class TaskAugmenter:
+    """Handles task augmentation operations."""
+    
+    def __init__(self, config: AugmentConfig):
+        self.config = config
+        self.paraphrase_manager = ParaphraseManager(
+            config.paraphrases_repo,
+            config.paraphrases_filename
+        )
+
+    def augment_task(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply task augmentation to trajectory."""
+        try:
+            # Rephrase instructions if available
+            if "language_instruction" in trajectory["task"]:
+                trajectory = self._rephrase_instruction(trajectory)
+
+            # Apply task conditioning dropout
+            trajectory = self._delete_task_conditioning(trajectory)
+            
+            return trajectory
+            
+        except Exception as e:
+            logger.error(f"Error in task augmentation: {str(e)}")
+            raise
+
+    def _rephrase_instruction(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
+        """Rephrase language instruction."""
+        original_language = trajectory["task"]["language_instruction"]
+        
+        # Check if language key is not empty
+        if tf.reduce_all(tf.strings.length(original_language) > 0):
+            trajectory["task"]["language_instruction"] = \
+                self.paraphrase_manager.sample_paraphrase(
+                    original_language,
+                    self.config.rephrase_prob
+                )
+            
+        return trajectory
+
+    def _delete_task_conditioning(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
+        """Randomly drop out either goal images or language instruction."""
+        if "language_instruction" not in trajectory["task"]:
+            return trajectory
+
+        # Find image keys
+        image_keys = {
+            key for key in trajectory["task"].keys()
+            if key.startswith("image_") or key.startswith("depth_")
+        }
+        
+        if not image_keys:
+            return trajectory
+
+        # Determine what to keep
+        traj_len = tf.shape(trajectory["action"])[0]
+        should_keep_images = tf.random.uniform([traj_len]) < self.config.keep_image_prob
+        should_keep_images |= ~trajectory["task"]["pad_mask_dict"]["language_instruction"]
+
+        # Process each key
+        for key in image_keys | {"language_instruction"}:
+            should_keep = should_keep_images if key in image_keys else ~should_keep_images
+            
+            # Pad out the key
+            trajectory["task"][key] = tf.where(
+                should_keep,
+                trajectory["task"][key],
+                to_padding(trajectory["task"][key])
+            )
+            
+            # Update pad mask
+            trajectory["task"]["pad_mask_dict"][key] = tf.where(
+                should_keep,
+                trajectory["task"]["pad_mask_dict"][key],
+                tf.zeros_like(trajectory["task"]["pad_mask_dict"][key])
+            )
+
+        # Update goal timestep
+        trajectory["task"]["timestep"] = tf.where(
+            should_keep_images,
+            trajectory["task"]["timestep"],
+            traj_len - 1
+        )
+
+        return trajectory
+
+
+def create_augmenter(config: Optional[Dict[str, Any]] = None) -> TaskAugmenter:
+    """Create task augmenter instance."""
+    config = AugmentConfig(**(config or {}))
+    return TaskAugmenter(config)
+
+
+# Convenience functions
+def delete_and_rephrase(
+        trajectory: Dict[str, Any],
+        paraphrases_repo: str,
+        paraphrases_filename: str,
+        rephrase_prob: float,
+        keep_image_prob: float
+) -> Dict[str, Any]:
+    """Apply both deletion and rephrasing augmentations."""
+    config = AugmentConfig(
+        rephrase_prob=rephrase_prob,
+        keep_image_prob=keep_image_prob,
+        paraphrases_repo=paraphrases_repo,
+        paraphrases_filename=paraphrases_filename
+    )
+    
+    augmenter = TaskAugmenter(config)
+    return augmenter.augment_task(trajectory)
 
 
 def delete_task_conditioning(
-    traj: dict,
-    keep_image_prob: float,
-):
-    """
-    Randomly drops out either the goal images or the language instruction. Only does something if both of
-    these are present.
-
-    Args:
-        traj: A dictionary containing trajectory data. Should have a "task" key.
-        keep_image_prob: The probability of keeping the goal images. The probability of keeping the language
-            instruction is 1 - keep_image_prob.
-    """
-    if "language_instruction" not in traj["task"]:
-        return traj
-
-    image_keys = {
-        key
-        for key in traj["task"].keys()
-        if key.startswith("image_") or key.startswith("depth_")
-    }
-    if not image_keys:
-        return traj
-
-    traj_len = tf.shape(traj["action"])[0]
-    should_keep_images = tf.random.uniform([traj_len]) < keep_image_prob
-    should_keep_images |= ~traj["task"]["pad_mask_dict"]["language_instruction"]
-
-    for key in image_keys | {"language_instruction"}:
-        should_keep = should_keep_images if key in image_keys else ~should_keep_images
-        # pad out the key
-        traj["task"][key] = tf.where(
-            should_keep,
-            traj["task"][key],
-            to_padding(traj["task"][key]),
-        )
-        # zero out the pad mask dict for the key
-        traj["task"]["pad_mask_dict"][key] = tf.where(
-            should_keep,
-            traj["task"]["pad_mask_dict"][key],
-            tf.zeros_like(traj["task"]["pad_mask_dict"][key]),
-        )
-
-    # when no goal images are present, the goal timestep becomes the final timestep
-    traj["task"]["timestep"] = tf.where(
-        should_keep_images,
-        traj["task"]["timestep"],
-        traj_len - 1,
-    )
-
-    return traj
+        trajectory: Dict[str, Any],
+        keep_image_prob: float
+) -> Dict[str, Any]:
+    """Apply only deletion augmentation."""
+    config = AugmentConfig(keep_image_prob=keep_image_prob)
+    augmenter = TaskAugmenter(config)
+    return augmenter.augment_task(trajectory)
