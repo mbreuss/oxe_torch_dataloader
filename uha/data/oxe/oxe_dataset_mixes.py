@@ -116,7 +116,19 @@ class DatasetMixRegistry:
                 ],
                 description="Mix focused on Franka robot datasets"
             ),
-
+            # Mixed Objects (MO) Mix
+            "MO": DatasetMix(
+                name="MO",
+                datasets=[
+                    ("libero_spatial_no_noops", 0.051870),
+                    ("libero_object_no_noops", 0.065593),
+                    ("libero_goal_no_noops", 0.050961),
+                    ("libero_10_no_noops", 0.099362),
+                    ("bridge_dataset", 0.268742),
+                    ("fractal20220817_data", 0.463472)
+                ],
+                description="Mixed Objects dataset combining LIBERO, Bridge and Fractal data"
+            ),
             # Comprehensive Mixes
             "oxe_flex_act_soup": DatasetMix(
                 name="oxe_flex_act_soup",

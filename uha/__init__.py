@@ -5,6 +5,7 @@ import torch
 import tensorflow as tf
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
+from omegaconf import DictConfig, OmegaConf
 
 from uha.data.dataset import make_interleaved_dataset, make_single_dataset
 from uha.data.oxe import make_oxe_dataset_kwargs_and_weights
@@ -20,6 +21,52 @@ logger = logging.getLogger(__name__)
 
 # Disable TensorFlow GPU usage
 tf.config.set_visible_devices([], "GPU")
+
+
+def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool = True):
+    """Get OXE dataset with TensorFlow backend.
+    
+    Args:
+        cfg: Configuration object containing dataset specs
+        train: Whether this is for training or validation
+        
+    Returns:
+        Configured dataset ready for training/validation
+    """
+    try:
+        # Determine normalization type
+        norm_type = getattr(cfg, "action_proprio_normalization_type", "normal")
+        if norm_type not in {"normal", "bounds"}:
+            raise ValueError(f"Invalid normalization type: {norm_type}")
+            
+        action_proprio_normalization_type = NormalizationType(norm_type)
+
+        # Get dataset kwargs and weights
+        dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
+            cfg.DATA_NAME,
+            cfg.DATA_PATH,
+            action_proprio_normalization_type=action_proprio_normalization_type,
+            load_camera_views=cfg.load_camera_views,
+            dataset_size_limit=getattr(cfg, "dataset_size_limit", None),
+        )
+
+        # Adjust shuffle buffer size for validation
+        if not train:
+            cfg.interleaved_dataset_cfg.shuffle_buffer_size //= 100
+
+        # Create dataset
+        dataset = make_interleaved_dataset(
+            dataset_kwargs_list,
+            sample_weights,
+            train=train,
+            **OmegaConf.to_object(cfg.interleaved_dataset_cfg)
+        )
+
+        return dataset
+
+    except Exception as e:
+        logger.error(f"Error creating OXE dataset: {str(e)}")
+        raise
 
 
 def make_pytorch_oxe_iterable_dataset(

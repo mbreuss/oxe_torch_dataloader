@@ -65,7 +65,7 @@ class DatasetRegistry:
         """Initialize all dataset configurations."""
         self._configs.update({
             # Bridge and variants
-            "bridge": DatasetConfig(
+            "bridge_dataset": DatasetConfig(
                 image_obs_keys=ImageConfig(primary="image_0", secondary="image_1"),
                 depth_obs_keys=ImageConfig(),
                 proprio_encoding=ProprioEncoding.POS_EULER,

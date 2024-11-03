@@ -412,3 +412,100 @@ def make_interleaved_dataset(
         **kwargs
     )
     return builder.build()
+
+
+@dataclass
+class SingleDatasetConfig:
+    """Configuration for single dataset creation."""
+    train: bool = True
+    batch_size: Optional[int] = None
+    traj_transform_kwargs: Dict[str, Any] = None
+    frame_transform_kwargs: Dict[str, Any] = None
+
+    def __post_init__(self):
+        if self.traj_transform_kwargs is None:
+            self.traj_transform_kwargs = {}
+        if self.frame_transform_kwargs is None:
+            self.frame_transform_kwargs = {}
+
+
+class SingleDatasetBuilder:
+    """Handles single dataset creation with configuration."""
+
+    def __init__(self, dataset_kwargs: Dict[str, Any], config: SingleDatasetConfig):
+        self.dataset_kwargs = dataset_kwargs
+        self.config = config
+
+    def build(self) -> dl.DLataset:
+        """Build single dataset with transforms."""
+        try:
+            # Create base dataset
+            dataset, dataset_statistics = make_dataset_from_rlds(
+                **self.dataset_kwargs,
+                train=self.config.train
+            )
+
+            # Apply trajectory transforms
+            dataset = traj_transforms.apply_trajectory_transforms(
+                dataset,
+                train=self.config.train,
+                **self.config.traj_transform_kwargs
+            )
+
+            # Apply frame transforms
+            dataset = obs_transforms.apply_frame_transforms(
+                dataset,
+                train=self.config.train,
+                **self.config.frame_transform_kwargs
+            )
+
+            # Get length before potential batching
+            dataset_len = dataset_statistics["num_transitions"]
+
+            # Apply batching if configured
+            if self.config.batch_size is not None:
+                dataset = dataset.batch(self.config.batch_size)
+
+            # Optimize memory usage
+            dataset = dataset.with_ram_budget(1)
+
+            # Add metadata
+            dataset.dataset_statistics = dataset_statistics
+            dataset.dataset_len = dataset_len
+
+            return dataset
+
+        except Exception as e:
+            logger.error(
+                f"Error building dataset {self.dataset_kwargs.get('name', 'unknown')}: {str(e)}"
+            )
+            raise
+
+
+def make_single_dataset(
+    dataset_kwargs: Dict[str, Any],
+    config: Optional[SingleDatasetConfig] = None
+) -> dl.DLataset:
+    """Creates a single dataset with transforms.
+
+    Args:
+        dataset_kwargs: Keyword arguments for dataset creation
+        config: Configuration for dataset creation and transforms
+        
+    Returns:
+        Transformed dataset with statistics and length information
+        
+    Example:
+        >>> config = SingleDatasetConfig(
+        ...     train=True,
+        ...     batch_size=32,
+        ...     traj_transform_kwargs={"window_size": 2},
+        ...     frame_transform_kwargs={"resize_size": (224, 224)}
+        ... )
+        >>> dataset = make_single_dataset(dataset_kwargs, config)
+    """
+    builder = SingleDatasetBuilder(
+        dataset_kwargs,
+        config or SingleDatasetConfig()
+    )
+    return builder.build()
