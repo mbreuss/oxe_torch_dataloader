@@ -61,7 +61,7 @@ def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool = True):
         dataset = make_interleaved_dataset(
             dataset_kwargs_list,
             sample_weights,
-            train=train,
+            # train=train,
             **OmegaConf.to_object(cfg.interleaved_dataset_cfg)
         )
 

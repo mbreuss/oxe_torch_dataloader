@@ -133,60 +133,54 @@ def make_oxe_dataset_kwargs(
     action_proprio_normalization_type: NormalizationType = NormalizationType.NORMAL,
 ) -> Dict[str, Any]:
     """Generates dataset kwargs for a given dataset from Open X-Embodiment."""
-    # Get dataset config from registry
-    dataset_config = DATASET_REGISTRY.get_config(name)
-    
-    # Create transform config from dataset config
-    transform_config = {
-        "robot_name": dataset_config.robot_name,
-        "action_space": dataset_config.action_space,
-        "num_arms": getattr(dataset_config, "num_arms", 1),
-        "image_keys": convert_image_config_to_dict(dataset_config.image_obs_keys),
-        "depth_keys": convert_image_config_to_dict(dataset_config.depth_obs_keys) if dataset_config.depth_obs_keys else None,
-        "gripper_threshold": 0.05
-    }
+    try:
+        # Get dataset config from registry
+        dataset_config = DATASET_REGISTRY.get_config(name)
+        
+        # Convert to dictionary and create base kwargs
+        config_dict = {
+            "name": name,
+            "data_dir": dataset_config.data_dir if hasattr(dataset_config, "data_dir") else data_dir,
+            "dataset_size_limit": dataset_size_limit,
+            "force_recompute_dataset_statistics": force_recompute_dataset_statistics,
+            "action_proprio_normalization_type": action_proprio_normalization_type,
+            "image_obs_keys": convert_image_config_to_dict(dataset_config.image_obs_keys),
+            "depth_obs_keys": convert_image_config_to_dict(dataset_config.depth_obs_keys) if hasattr(dataset_config, 'depth_obs_keys') else None,
+            "robot_name": dataset_config.robot_name,
+            "action_space": dataset_config.action_space,
+            "proprio_encoding": dataset_config.proprio_encoding,
+            "action_encoding": dataset_config.action_encoding,
+            "transform_type": getattr(dataset_config, "transform_type", "franka"),
+            "num_arms": getattr(dataset_config, "num_arms", 1)
+        }
 
-    # Deep copy to avoid mutating the original config
-    dataset_kwargs = copy.deepcopy(dataset_config)
+        # Create transform config
+        transform_config = {
+            "robot_name": dataset_config.robot_name,
+            "action_space": dataset_config.action_space,
+            "image_obs_keys": convert_image_config_to_dict(dataset_config.image_obs_keys),
+            "depth_obs_keys": convert_image_config_to_dict(dataset_config.depth_obs_keys) if hasattr(dataset_config, 'depth_obs_keys') else None,
+            "proprio_encoding": dataset_config.proprio_encoding,
+            "action_encoding": dataset_config.action_encoding
+        }
 
-    # Set action normalization masks
-    dataset_kwargs.action_normalization_mask = _get_action_normalization_mask(
-        dataset_config.action_encoding
-    )
+        # Add other configurations
+        if load_proprio:
+            config_dict["proprio_obs_key"] = "proprio"
+        if load_language and not hasattr(dataset_config, "language_key"):
+            config_dict["language_key"] = "language_instruction"
 
-    # Filter camera views
-    _validate_camera_views(name, load_camera_views, dataset_config.image_obs_keys)
-    dataset_kwargs.image_obs_keys = _filter_camera_views(
-        dataset_config.image_obs_keys,
-        load_camera_views
-    )
+        # Add standardize_fn with config
+        config_dict["standardize_fn"] = ModuleSpec.create(
+            OXE_STANDARDIZATION_TRANSFORMS[name],
+            kwargs={"config": transform_config}
+        )
 
-    # Configure optional features
-    if not load_depth:
-        dataset_kwargs.depth_obs_keys = None
-    if load_proprio:
-        dataset_kwargs.proprio_obs_key = "proprio"
-    if load_language and not hasattr(dataset_kwargs, "language_key"):
-        dataset_kwargs.language_key = "language_instruction"
-    elif not load_language and hasattr(dataset_kwargs, "language_key"):
-        delattr(dataset_kwargs, "language_key")
+        return config_dict
 
-    # Set standardization function with config
-    dataset_kwargs.standardize_fn = ModuleSpec.create(
-        OXE_STANDARDIZATION_TRANSFORMS[name],
-        config=transform_config
-    )
-
-    # Handle data directory 
-    if hasattr(dataset_kwargs, "data_dir"):
-        data_dir = _normalize_data_dir(dataset_kwargs.data_dir)
-        delattr(dataset_kwargs, "data_dir")
-
-    return {
-        "name": name,
-        "data_dir": str(data_dir),
-        **dataset_kwargs.__dict__
-    }
+    except Exception as e:
+        logger.error(f"Error creating dataset kwargs for {name}: {str(e)}")
+        raise
 
 def _normalize_data_dir(data_dir: Union[str, Path]) -> Path:
     """Normalize data directory path."""

@@ -336,6 +336,7 @@ def get_dataset_statistics(
     called before with the same `hash_dependencies`. Currently, the statistics include the min/max/mean/std of
     the actions and proprio as well as the number of transitions and trajectories in the dataset.
     """
+    print("Inside get_dataset_statistics")
     unique_hash = hashlib.sha256(
         "".join(hash_dependencies).encode("utf-8"),
         usedforsecurity=False,

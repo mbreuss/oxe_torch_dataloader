@@ -454,6 +454,7 @@ class DatasetRegistry:
         """Register a new dataset configuration."""
         self._configs[name] = config
 
+
 DATASET_REGISTRY = DatasetRegistry()
 DATASET_REGISTRY._configs = {
     # Bridge and variants

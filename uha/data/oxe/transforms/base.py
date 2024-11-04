@@ -31,7 +31,7 @@ class TransformConfig:
 class BaseTransform:
     """Base class for trajectory transformations."""
     
-    def __init__(self, config: Union[TransformConfig, Dict[str, Any]]):
+    def __init__(self, config: Union[TransformConfig, Dict[str, Any]], *args, **kwargs):
         # Convert dict config to TransformConfig if needed
         if isinstance(config, dict):
             self.config = TransformConfig(

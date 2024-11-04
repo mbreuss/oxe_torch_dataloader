@@ -66,6 +66,13 @@ class DatasetConfig:
     num_parallel_reads: int = tf.data.AUTOTUNE
     num_parallel_calls: int = tf.data.AUTOTUNE
     dataset_size_limit: Optional[int] = None
+    # Add robot-specific fields
+    robot_name: Optional[str] = None
+    action_space: Optional[str] = None
+    proprio_encoding: Optional[str] = None
+    action_encoding: Optional[str] = None
+    num_arms: int = 1
+    transform_type: str = "franka"
 
     def __post_init__(self):
         """Validate and process configuration."""
@@ -76,11 +83,6 @@ class DatasetConfig:
             self.image_obs_keys = {}
         if not isinstance(self.depth_obs_keys, dict):
             self.depth_obs_keys = {}
-
-    @classmethod
-    def create(cls, name: str, data_dir: Union[str, Path], **kwargs) -> 'DatasetConfig':
-        """Factory method for creating dataset config."""
-        return cls(name=name, data_dir=data_dir, **kwargs)
 
 
 @dataclass
@@ -143,11 +145,12 @@ class DatasetBuilder:
     def build(self) -> Tuple[dl.DLataset, Dict[str, Any]]:
         """Build dataset according to configuration."""
         try:
+            print('inside build of DatasetBuilder')
             builder = tfds.builder(
                 self.config.name,
                 data_dir=str(self.config.data_dir)
             )
-
+            print(f"Building dataset {self.config.name} from {self.config.data_dir}")
             # Get or compute statistics
             dataset_statistics = self._get_statistics(builder)
 
@@ -173,30 +176,40 @@ class DatasetBuilder:
     def _get_statistics(self, builder: tfds.core.DatasetBuilder) -> Dict[str, Any]:
         """Get or compute dataset statistics."""
         if isinstance(self.config.dataset_statistics, str):
+            print(f"Loading dataset statistics from {self.config.dataset_statistics}")
             with open(self.config.dataset_statistics) as f:
                 return json.load(f)
 
         if self.config.dataset_statistics is not None:
+            print("Using provided dataset statistics")
             return self.config.dataset_statistics
 
         return self._compute_statistics(builder)
 
     def _compute_statistics(self, builder: tfds.core.DatasetBuilder) -> Dict[str, Any]:
         """Compute dataset statistics."""
+        print("Computing dataset statistics...")
         dataset = dl.DLataset.from_rlds(
             builder,
             split="all",
             shuffle=False
         )
-        
+        print("Computing dataset statistics... just loaded dataset next step is to get_dataset_statistics")
+        print('-------------------')
         for filter_fn_spec in self.config.filter_functions:
-            dataset = dataset.filter(ModuleSpec.instantiate(filter_fn_spec))
+            print(f"Attempting to instantiate filter function: {filter_fn_spec}")
+            instantiated_filter = ModuleSpec.instantiate(filter_fn_spec)
+            if callable(instantiated_filter):
+                dataset = dataset.filter(instantiated_filter)
+            else:
+                logger.error(f"Filter function {filter_fn_spec} could not be instantiated or is not callable.")
+
             
         if self.config.ignore_errors:
             dataset = dataset.ignore_errors()
             
         dataset = dataset.traj_map(self._restructure).filter(self._is_nonzero_length)
-        
+        print("Computing dataset statistics after filter and map")
         return get_dataset_statistics(
             dataset,
             hash_dependencies=(
@@ -224,13 +237,15 @@ class DatasetBuilder:
 
     def _apply_filters(self, dataset: dl.DLataset) -> dl.DLataset:
         """Apply dataset filters."""
+        if not self.config.filter_functions:
+            logger.warning("No filter functions specified in the configuration.")
+            return dataset
         for filter_fn_spec in self.config.filter_functions:
             dataset = dataset.filter(ModuleSpec.instantiate(filter_fn_spec))
-            
         if self.config.ignore_errors:
             dataset = dataset.ignore_errors()
-            
         return dataset
+
 
     def _apply_transforms(self, 
                          dataset: dl.DLataset,
@@ -314,6 +329,7 @@ def make_dataset_from_rlds(
     """Create dataset from RLDS format."""
     config = DatasetConfig(name=name, data_dir=data_dir, **kwargs)
     builder = DatasetBuilder(config)
+    print(f"Building dataset {name} from {data_dir}")
     return builder.build()
 
 
