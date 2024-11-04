@@ -18,13 +18,12 @@ logger = logging.getLogger(__name__)
 class ModuleSpec:
     """
     JSON-serializable representation of a function or class with arguments.
-    Useful for specifying particular classes or functions in config files while
-    maintaining serializability and command-line overridability.
     """
     module: str
     name: str
     args: Tuple[Any, ...] = ()
     kwargs: Dict[str, Any] = None
+    config: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         """Validate and initialize specification."""
@@ -32,6 +31,22 @@ class ModuleSpec:
             self.kwargs = {}
         self._validate_spec()
 
+    @classmethod
+    def create(cls, 
+               callable_or_full_name: Union[str, Callable, Type], 
+               *args,
+               config: Optional[Dict[str, Any]] = None,
+               **kwargs) -> 'ModuleSpec':
+        """Create a module spec with optional config."""
+        if isinstance(callable_or_full_name, str):
+            if callable_or_full_name.count(':') != 1:
+                raise ValueError("Import string must be in format 'module.submodule:name'")
+            module, name = callable_or_full_name.split(':')
+        else:
+            module, name = cls._infer_full_name(callable_or_full_name)
+
+        return cls(module=module, name=name, args=args, kwargs=kwargs, config=config)
+    
     def _validate_spec(self):
         """Validate specification components."""
         if not isinstance(self.module, str):
@@ -42,38 +57,23 @@ class ModuleSpec:
             raise ValueError(f"Args must be tuple or list, got {type(self.args)}")
         if not isinstance(self.kwargs, dict):
             raise ValueError(f"Kwargs must be dict, got {type(self.kwargs)}")
+        if self.config is not None and not isinstance(self.config, dict):
+            raise ValueError(f"Config must be dict or None, got {type(self.config)}")
 
-    @classmethod
-    def create(cls, 
-               callable_or_full_name: Union[str, Callable, Type], 
-               *args, 
-               **kwargs) -> 'ModuleSpec':
-        """
-        Create a module spec from a callable or import string.
 
-        Args:
-            callable_or_full_name: Either the callable object or a fully qualified
-                import string (e.g. "module.submodule:Function")
-            *args: Positional arguments for the callable
-            **kwargs: Keyword arguments for the callable
-
-        Returns:
-            ModuleSpec instance
-        """
+    def instantiate(self, **override_kwargs) -> Callable:
+        """Instantiate with config if available."""
         try:
-            if isinstance(callable_or_full_name, str):
-                if callable_or_full_name.count(':') != 1:
-                    raise ValueError(
-                        "Import string must be in format 'module.submodule:name'"
-                    )
-                module, name = callable_or_full_name.split(':')
-            else:
-                module, name = cls._infer_full_name(callable_or_full_name)
-
-            return cls(module=module, name=name, args=args, kwargs=kwargs)
-        
+            cls = self._import_callable()
+            kwargs = {**self.kwargs, **override_kwargs}
+            
+            if self.config is not None:
+                # If config exists, pass it as first argument
+                return partial(cls, self.config, *self.args, **kwargs)
+            return partial(cls, *self.args, **kwargs)
+            
         except Exception as e:
-            logger.error(f"Error creating ModuleSpec: {str(e)}")
+            logger.error(f"Error instantiating {self.module}:{self.name}: {str(e)}")
             raise
 
     @classmethod
@@ -111,27 +111,6 @@ class ModuleSpec:
             raise FileNotFoundError(f"No spec file found at {path}")
         with path.open('r') as f:
             return cls.from_dict(json.load(f))
-
-    def instantiate(self, **override_kwargs) -> Callable:
-        """
-        Instantiate the specified callable with stored arguments.
-        
-        Args:
-            **override_kwargs: Optional kwargs that override stored kwargs
-
-        Returns:
-            Partial function with stored/override arguments
-        """
-        try:
-            cls = self._import_callable()
-            kwargs = {**self.kwargs, **override_kwargs}
-            return partial(cls, *self.args, **kwargs)
-        
-        except Exception as e:
-            logger.error(
-                f"Error instantiating {self.module}:{self.name}: {str(e)}"
-            )
-            raise
 
     def to_string(self) -> str:
         """Convert specification to string representation."""

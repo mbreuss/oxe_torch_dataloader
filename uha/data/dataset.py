@@ -71,6 +71,16 @@ class DatasetConfig:
         """Validate and process configuration."""
         if isinstance(self.data_dir, str):
             self.data_dir = Path(self.data_dir)
+        
+        if not isinstance(self.image_obs_keys, dict):
+            self.image_obs_keys = {}
+        if not isinstance(self.depth_obs_keys, dict):
+            self.depth_obs_keys = {}
+
+    @classmethod
+    def create(cls, name: str, data_dir: Union[str, Path], **kwargs) -> 'DatasetConfig':
+        """Factory method for creating dataset config."""
+        return cls(name=name, data_dir=data_dir, **kwargs)
 
 
 @dataclass

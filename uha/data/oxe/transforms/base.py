@@ -1,7 +1,7 @@
 """Base classes for transforms."""
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 import logging
 
 import tensorflow as tf
@@ -31,8 +31,19 @@ class TransformConfig:
 class BaseTransform:
     """Base class for trajectory transformations."""
     
-    def __init__(self, config: TransformConfig):
-        self.config = config
+    def __init__(self, config: Union[TransformConfig, Dict[str, Any]]):
+        # Convert dict config to TransformConfig if needed
+        if isinstance(config, dict):
+            self.config = TransformConfig(
+                robot_name=config.get('robot_name', ''),
+                action_space=config.get('action_space', ''),
+                num_arms=config.get('num_arms', 1),
+                image_keys=ImageKeyConfig(**config.get('image_keys', {})),
+                depth_keys=config.get('depth_keys'),
+                gripper_threshold=config.get('gripper_threshold', 0.05)
+            )
+        else:
+            self.config = config
         self._validate_config()
 
     def _validate_config(self):

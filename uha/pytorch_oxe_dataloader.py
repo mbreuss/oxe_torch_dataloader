@@ -19,6 +19,9 @@ from uha.data.language_encoders.no_encoder import NoEncoder
 
 logger = logging.getLogger(__name__)
 
+from dataclasses import dataclass
+from uha.data.oxe.transforms.base import ImageKeyConfig
+
 
 @dataclass
 class DataloaderConfig:
@@ -33,13 +36,13 @@ class DataloaderConfig:
 
 @dataclass
 class TransformConfig:
-    """Configuration for data transformations."""
-    key_remapping: Optional[Dict[str, Any]] = None
-    move_axis: bool = True
-    add_empty_key: tuple = ()
-    adjust_type: Optional[str] = None
-    bytes_to_string: bool = True
-    add_robot_information: bool = False
+    """Configuration for transforms."""
+    robot_name: str
+    action_space: str
+    num_arms: int = 1
+    image_keys: ImageKeyConfig = ImageKeyConfig()
+    depth_keys: Optional[ImageKeyConfig] = None
+    gripper_threshold: float = 0.05
 
 
 class ImageProcessor:
