@@ -1,47 +1,84 @@
-"""Base classes and utilities for transforms."""
+"""Base classes for transforms."""
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional, Dict, Any
 import logging
 
-import numpy as np
 import tensorflow as tf
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
+class ImageKeyConfig:
+    """Configuration for image keys."""
+    primary: Optional[str] = None
+    secondary: Optional[str] = None
+    wrist: Optional[str] = None
+
+
+@dataclass
 class TransformConfig:
-    """Base configuration for transforms."""
+    """Configuration for transforms."""
     robot_name: str
     action_space: str
     num_arms: int = 1
+    image_keys: ImageKeyConfig = ImageKeyConfig()
+    depth_keys: Optional[ImageKeyConfig] = None
+    gripper_threshold: float = 0.05
 
 
-class BaseTransform(ABC):
+class BaseTransform:
     """Base class for trajectory transformations."""
     
     def __init__(self, config: TransformConfig):
         self.config = config
+        self._validate_config()
 
-    @abstractmethod
+    def _validate_config(self):
+        """Validate transform configuration."""
+        if not self.config.robot_name:
+            raise ValueError("Robot name must be specified")
+        if not self.config.action_space:
+            raise ValueError("Action space must be specified")
+        if self.config.num_arms < 1:
+            raise ValueError("Number of arms must be at least 1")
+
     def __call__(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
         """Transform trajectory."""
-        pass
+        try:
+            self._validate_trajectory(trajectory)
+            trajectory = self._process_images(trajectory)
+            trajectory = self._process_actions(trajectory)
+            trajectory = self._add_robot_info(trajectory)
+            return trajectory
+        except Exception as e:
+            logger.error(f"Error transforming trajectory: {str(e)}")
+            raise
 
-    def _add_robot_information(self) -> str:
-        """Generate robot information string."""
-        arm_text = "arms" if self.config.num_arms > 1 else "arm"
-        return (f"A {self.config.robot_name} robot with {self.config.num_arms} "
-                f"{arm_text} controlled by {self.config.action_space} actions")
-
-    def _validate_trajectory(self, trajectory: Dict[str, Any]) -> None:
+    def _validate_trajectory(self, trajectory: Dict[str, Any]):
         """Validate trajectory structure."""
         required_keys = {"action", "observation"}
         missing_keys = required_keys - set(trajectory.keys())
         if missing_keys:
             raise ValueError(f"Missing required keys in trajectory: {missing_keys}")
+
+    def _process_images(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
+        """Process images in trajectory."""
+        return trajectory
+
+    def _process_actions(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
+        """Process actions in trajectory."""
+        return trajectory
+
+    def _add_robot_info(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
+        """Add robot information to trajectory."""
+        arm_text = "arms" if self.config.num_arms > 1 else "arm"
+        trajectory["observation"]["robot_information"] = (
+            f"A {self.config.robot_name} robot with {self.config.num_arms} "
+            f"{arm_text} controlled by {self.config.action_space} actions"
+        )
+        return trajectory
 
 
 class GripperProcessor:

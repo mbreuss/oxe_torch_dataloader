@@ -14,6 +14,9 @@ from uha.pytorch_oxe_dataloader import (
     TransformConfig,
     create_dataloader
 )
+
+from uha.data.dataset import SingleDatasetConfig
+from uha.data.oxe.oxe_dataset_configs import ImageConfig
 from uha.data.utils.data_utils import NormalizationType
 
 # Configure logging
@@ -163,13 +166,26 @@ def get_single_dataset_tensorflow(cfg: DictConfig, train: bool):
         )
 
         logger.info(f"Constructing single {'val' if not train else 'train'} dataset: {dataset_kwargs_list[0]['name']}")
-
-        # Create dataset
-        dataset = make_single_dataset(
-            dataset_kwargs=dataset_kwargs_list[0],
+        
+        # Separate dataset kwargs from transform kwargs
+        dataset_kwargs = dataset_kwargs_list[0].copy()
+        dataset_kwargs["train"] = train
+        
+        # Create SingleDatasetConfig with transform kwargs
+        config = SingleDatasetConfig(
             train=train,
             traj_transform_kwargs=cfg.interleaved_dataset_cfg["traj_transform_kwargs"],
-            frame_transform_kwargs=cfg.interleaved_dataset_cfg["frame_transform_kwargs"],
+            frame_transform_kwargs=cfg.interleaved_dataset_cfg["frame_transform_kwargs"]
+        )
+
+        dataset = make_single_dataset(
+            dataset_kwargs=dataset_kwargs,
+            config=config
+        )
+        # Create dataset
+        dataset = make_single_dataset(
+            dataset_kwargs=dataset_kwargs,
+            config=config
         )
 
         return dataset

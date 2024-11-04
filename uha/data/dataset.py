@@ -30,6 +30,20 @@ from uha.data.utils.spec import ModuleSpec
 logger = logging.getLogger(__name__)
 
 
+def convert_image_config_to_dict(image_config: Any) -> Dict[str, Optional[str]]:
+    """Convert ImageConfig to dictionary format."""
+    if not hasattr(image_config, 'primary'):
+        return image_config  # Already a dict or other format
+        
+    return {
+        k: v for k, v in {
+            "primary": image_config.primary,
+            "secondary": image_config.secondary,
+            "wrist": image_config.wrist
+        }.items() if v is not None
+    }
+
+
 @dataclass
 class DatasetConfig:
     """Configuration for dataset creation."""
@@ -104,8 +118,17 @@ class DatasetBuilder:
     def _validate_config(self):
         """Validate dataset configuration."""
         required_keys = {"observation", "action"}
-        if not all(key in required_keys for key in self.config.image_obs_keys):
-            raise ValueError(f"Missing required keys: {required_keys}")
+        
+        # Ensure image_obs_keys is a dictionary
+        if hasattr(self.config.image_obs_keys, 'primary'):
+            self.config.image_obs_keys = convert_image_config_to_dict(self.config.image_obs_keys)
+            
+        # Validate keys
+        if not isinstance(self.config.image_obs_keys, dict):
+            raise ValueError("image_obs_keys must be a dictionary or ImageConfig")
+            
+        if not self.config.image_obs_keys:
+            raise ValueError("image_obs_keys cannot be empty")
 
     def build(self) -> Tuple[dl.DLataset, Dict[str, Any]]:
         """Build dataset according to configuration."""
@@ -442,7 +465,7 @@ class SingleDatasetBuilder:
             # Create base dataset
             dataset, dataset_statistics = make_dataset_from_rlds(
                 **self.dataset_kwargs,
-                train=self.config.train
+                # train=self.config.train
             )
 
             # Apply trajectory transforms

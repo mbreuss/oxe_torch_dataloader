@@ -1,13 +1,27 @@
 import copy
 import logging
 import os
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from typing import Any, Dict, List, Sequence, Tuple, Union, Mapping
+from dataclasses import dataclass
+from pathlib import Path
 
 from uha.data.oxe.oxe_dataset_configs import ActionEncoding, OXE_DATASET_CONFIGS
 from uha.data.oxe.oxe_dataset_mixes import OXE_NAMED_MIXES
 from uha.data.oxe.oxe_standardization_transforms import OXE_STANDARDIZATION_TRANSFORMS
 from uha.data.utils.data_utils import NormalizationType
 from uha.data.utils.spec import ModuleSpec
+
+from uha.data.oxe.oxe_dataset_configs import ImageConfig
+
+
+@dataclass
+class ImageObsConfig:
+    keys: Dict[str, str]
+    depth_keys: Dict[str, str]
+
+class DatasetConfigError(Exception):
+    """Custom exception for dataset configuration errors"""
+    pass
 
 
 def make_oxe_dataset_kwargs(
@@ -22,13 +36,12 @@ def make_oxe_dataset_kwargs(
     action_proprio_normalization_type: NormalizationType = NormalizationType.NORMAL,
 ) -> Dict[str, Any]:
     """
-    Generates dataset kwargs for a given dataset from Open X-Embodiment. The returned kwargs can be passed
-    directly into `uha.data.dataset.make_dataset_from_rlds`.
+    Generates dataset kwargs for a given dataset from Open X-Embodiment.
     """
     # Deep copy to avoid mutating the original config
     dataset_kwargs = copy.deepcopy(OXE_DATASET_CONFIGS[name])
 
-    # Set action normalization masks based on encoding type
+    # Set action normalization masks
     action_encoding_masks = {
         ActionEncoding.EEF_POS: [True] * 6 + [False],
         ActionEncoding.JOINT_POS: [True] * 7 + [False],
@@ -42,41 +55,60 @@ def make_oxe_dataset_kwargs(
     else:
         raise ValueError(f"Unsupported action encoding: {dataset_kwargs.action_encoding}")
 
-    # Adjust loaded camera views
-    # Extract non-None keys from ImageConfig object
-    image_obs_keys = {k: v for k, v in vars(dataset_kwargs.image_obs_keys).items() if v is not None}
+    # Handle camera views
+    missing_views = set(load_camera_views) - set(view for view in ['primary', 'secondary', 'wrist']
+                                                if getattr(dataset_kwargs.image_obs_keys, view) is not None)
+    if missing_views:
+        raise ValueError(f"Cannot load {name} with views {missing_views} since they are not available.")
+    
+    # Filter image observation keys based on requested views
+    dataset_kwargs.image_obs_keys = ImageConfig(
+        primary=dataset_kwargs.image_obs_keys.primary if 'primary' in load_camera_views else None,
+        secondary=dataset_kwargs.image_obs_keys.secondary if 'secondary' in load_camera_views else None,
+        wrist=dataset_kwargs.image_obs_keys.wrist if 'wrist' in load_camera_views else None
+    )
 
-    # Now calculate missing keys
-    missing_keys = set(load_camera_views) - set(image_obs_keys.keys())
+    # Filter depth observation keys if they exist and depth is requested
+    if hasattr(dataset_kwargs, 'depth_obs_keys'):
+        dataset_kwargs.depth_obs_keys = ImageConfig(
+            primary=dataset_kwargs.depth_obs_keys.primary if 'primary' in load_camera_views else None,
+            secondary=dataset_kwargs.depth_obs_keys.secondary if 'secondary' in load_camera_views else None,
+            wrist=dataset_kwargs.depth_obs_keys.wrist if 'wrist' in load_camera_views else None
+        )
 
-    if missing_keys:
-        raise ValueError(f"Unavailable views: {missing_keys}")
+    # Handle optional features
+    if not load_depth and hasattr(dataset_kwargs, "depth_obs_keys"):
+        delattr(dataset_kwargs, "depth_obs_keys")
+    if load_proprio:
+        dataset_kwargs.proprio_obs_key = "proprio"
+    if load_language and not hasattr(dataset_kwargs, "language_key"):
+        dataset_kwargs.language_key = "language_instruction"
+    elif not load_language and hasattr(dataset_kwargs, "language_key"):
+        delattr(dataset_kwargs, "language_key")
 
-    dataset_kwargs.image_obs_keys = {k: v for k, v in dataset_kwargs.image_obs_keys.items() if k in load_camera_views}
-    dataset_kwargs.depth_obs_keys = {k: v for k, v in dataset_kwargs.depth_obs_keys.items() if k in load_camera_views}
+    # Set standardization and normalization
+    dataset_kwargs.action_proprio_normalization_type = action_proprio_normalization_type
+    dataset_kwargs.standardize_fn = ModuleSpec.create(OXE_STANDARDIZATION_TRANSFORMS[name])
 
-    # Modify depth and language keys based on flags
-    if not load_depth:
-        dataset_kwargs.pop("depth_obs_keys", None)
-    dataset_kwargs["proprio_obs_key"] = "proprio" if load_proprio else None
-    if load_language:
-        dataset_kwargs.setdefault("language_key", "language_instruction")
-    else:
-        dataset_kwargs.pop("language_key", None)
+    # Handle data directory
+    if hasattr(dataset_kwargs, "data_dir"):
+        path_str = str(dataset_kwargs.data_dir)
+        if path_str.startswith("~"):
+            dataset_kwargs.data_dir = os.path.expanduser("~") + path_str[1:]
+        data_dir = dataset_kwargs.data_dir
+        delattr(dataset_kwargs, "data_dir")
 
-    # Set additional fields
-    dataset_kwargs["action_proprio_normalization_type"] = action_proprio_normalization_type
-    dataset_kwargs["standardize_fn"] = ModuleSpec.create(OXE_STANDARDIZATION_TRANSFORMS[name])
-
-    # Handle data directory and size limits
-    if "data_dir" in dataset_kwargs:
-        dataset_kwargs["data_dir"] = os.path.expanduser(dataset_kwargs["data_dir"])
+    # Handle size limits and statistics
     if dataset_size_limit is not None:
-        dataset_kwargs["dataset_size_limit"] = dataset_size_limit
+        dataset_kwargs.dataset_size_limit = dataset_size_limit
     if force_recompute_dataset_statistics:
-        dataset_kwargs["force_recompute_dataset_statistics"] = True
+        dataset_kwargs.force_recompute_dataset_statistics = True
 
-    return {"name": name, "data_dir": data_dir, **dataset_kwargs}
+    # Remove encoding information
+    delattr(dataset_kwargs, "proprio_encoding")
+    delattr(dataset_kwargs, "action_encoding")
+
+    return {"name": name, "data_dir": str(data_dir), **dataset_kwargs.__dict__}
 
 
 def make_oxe_dataset_kwargs_and_weights(
@@ -122,3 +154,57 @@ def make_oxe_dataset_kwargs_and_weights(
             logging.warning(f"Skipping dataset '{name}' due to error: {e}")
 
     return data_kwargs_list, weights
+
+
+def _validate_camera_views(
+    name: str,
+    load_camera_views: Sequence[str],
+    image_config: ImageConfig
+) -> None:
+    """
+    Validates requested camera views against available views in ImageConfig.
+    
+    Args:
+        name: Dataset name
+        load_camera_views: Requested camera views to load (e.g., ["primary"])
+        image_config: ImageConfig object containing view mappings
+    """
+    # Get available views (ones that have a non-None value)
+    available_views = {
+        view: getattr(image_config, view)
+        for view in ['primary', 'secondary', 'wrist']
+        if getattr(image_config, view) is not None
+    }
+    
+    missing_views = set(load_camera_views) - set(available_views.keys())
+    if missing_views:
+        available = ", ".join(available_views.keys())
+        raise ValueError(
+            f"Cannot load {name} with views {missing_views} since they are not available. "
+            f"Available views: {available}"
+        )
+
+def _configure_optional_features(
+    dataset_kwargs: Dict[str, Any],
+    load_depth: bool,
+    load_proprio: bool,
+    load_language: bool,
+) -> None:
+    """Configures optional dataset features based on flags."""
+    if not load_depth and "depth_obs_keys" in dataset_kwargs:
+        dataset_kwargs.pop("depth_obs_keys")
+    
+    if load_proprio:
+        dataset_kwargs["proprio_obs_key"] = "proprio"
+        
+    if load_language and "language_key" not in dataset_kwargs:
+        dataset_kwargs["language_key"] = "language_instruction"
+    elif not load_language and "language_key" in dataset_kwargs:
+        del dataset_kwargs["language_key"]
+
+def _normalize_data_dir(data_dir: Union[str, Path]) -> Path:
+    """Normalizes data directory path."""
+    data_dir = str(data_dir)
+    if data_dir.startswith("~"):
+        data_dir = os.path.expanduser("~") + data_dir[1:]
+    return Path(data_dir)

@@ -1,87 +1,85 @@
 _recursive_: false
 
-# Top-level keys: dict_keys(['observation', 'task', 'action', 'dataset_name', 'absolute_action_mask'])
-# Observation keys:  dict_keys(['image_primary', 'image_wrist', 'proprio', 'timestep', 'pad_mask_dict', 'pad_mask'])
-# Task keys:  dict_keys(['language_instruction', 'pad_mask_dict', 'image_primary', 'image_wrist', 'proprio', 'timestep'])
 defaults:
-  - transforms: oxe_no_remapping # oxe_to_calvin
-  - language_encoders: clip # clip # no_encoder
+  - transforms: oxe_no_remapping  # oxe_to_calvin
+  - language_encoders: clip  # clip # no_encoder
 
-DATA_NAME: MO # libero_all # simpler_env # joint_mix # real_kitchen_mix # bridge # rtx # oxe_magic_soup # oxe_magic_soup_lang_only # small_test # finetune_data
-DATA_PATH: gs://gresearch/robotics # "/home/marcelr/tensorflow_datasets" # "gs://gresearch/robotics"
-load_camera_views: ["primary", "secondary", "wrist"] # ["primary", "wrist"]
+DATA_NAME: MO  # libero_all # simpler_env # joint_mix # real_kitchen_mix # bridge # rtx
+DATA_PATH: gs://gresearch/robotics
+load_camera_views: ["primary"]  # Simplified to just primary view for better compatibility
 # dataset_size_limit: 1000
-action_proprio_normalization_type: bounds # bounds # normal
+action_proprio_normalization_type: bounds
 
 interleaved_dataset_cfg:
   shuffle_buffer_size: 10000
-  # change to 500k for training, large shuffle buffers are important, but adjust to your RAM
-  # batch_size: None
   balance_weights: True
+  
   traj_transform_kwargs:
-    goal_relabeling_strategy: null # "uniform_and_future" # "uniform"
+    goal_relabeling_strategy: null
     goal_relabeling_kwargs:
-        min_bound: 20
-        max_bound: 50
-        frame_diff: 3
+      min_bound: 20
+      max_bound: 50
+      frame_diff: 3
     window_size: 1
     action_horizon: 10
-    # max_action_dim: 16 # adds padding to actions with less dimension (for joint_mix: [#joints] + [#gripper])
-    # subsample_length: 100
     skip_unlabeled: True
-    # task_augment_strategy: "rephrase_lupus"
 
   frame_transform_kwargs:
-      image_augment_kwargs:
-          "primary":
-              random_resized_crop:
-                scale: [0.8, 1.0]
-                ratio: [0.9, 1.1]
-              random_brightness: [0.1]
-              random_contrast: [0.9, 1.1]
-              random_saturation: [0.9, 1.1]
-              random_hue: [0.05]
-              augment_order: [
-                  "random_resized_crop",
-                  "random_brightness",
-                  "random_contrast",
-                  "random_saturation",
-                  "random_hue",
-              ]
-          "secondary":
-              random_resized_crop:
-                scale: [0.8, 1.0]
-                ratio: [0.9, 1.1]
-              random_brightness: [0.1]
-              random_contrast: [0.9, 1.1]
-              random_saturation: [0.9, 1.1]
-              random_hue: [0.05]
-              augment_order: [
-                  "random_resized_crop",
-                  "random_brightness",
-                  "random_contrast",
-                  "random_saturation",
-                  "random_hue",
-              ]
-          "wrist":
-              random_brightness: [0.1]
-              random_contrast: [0.9, 1.1]
-              random_saturation: [0.9, 1.1]
-              random_hue: [0.05]
-              augment_order: [
-                  "random_brightness",
-                  "random_contrast",
-                  "random_saturation",
-                  "random_hue",
-              ]
-      resize_size:
-          primary: [224, 224]
-          secondary: [224, 224]
-          wrist: [128, 128]
-      resize_size_future_obs:
-          primary: [112, 112]
-          secondary: [112, 112]
-          wrist: [128, 128]
-      num_parallel_calls: 64 # 1024 # 512 # 256
-  traj_transform_threads: 16 # 512 # 256 # 128
-  traj_read_threads: 32 # 512 # 256 # 128
+    image_augment_kwargs:
+      "primary":
+        random_resized_crop:
+          scale: [0.8, 1.0]
+          ratio: [0.9, 1.1]
+        random_brightness: [0.1]
+        random_contrast: [0.9, 1.1]
+        random_saturation: [0.9, 1.1]
+        random_hue: [0.05]
+        augment_order: [
+          "random_resized_crop",
+          "random_brightness",
+          "random_contrast",
+          "random_saturation",
+          "random_hue",
+        ]
+      # Keep secondary and wrist configs but they'll only be used when those views are available
+      "secondary":
+        random_resized_crop:
+          scale: [0.8, 1.0]
+          ratio: [0.9, 1.1]
+        random_brightness: [0.1]
+        random_contrast: [0.9, 1.1]
+        random_saturation: [0.9, 1.1]
+        random_hue: [0.05]
+        augment_order: [
+          "random_resized_crop",
+          "random_brightness",
+          "random_contrast",
+          "random_saturation",
+          "random_hue",
+        ]
+      "wrist":
+        random_brightness: [0.1]
+        random_contrast: [0.9, 1.1]
+        random_saturation: [0.9, 1.1]
+        random_hue: [0.05]
+        augment_order: [
+          "random_brightness",
+          "random_contrast",
+          "random_saturation",
+          "random_hue",
+        ]
+    
+    resize_size:
+      primary: [224, 224]
+      secondary: [224, 224]
+      wrist: [128, 128]
+    
+    resize_size_future_obs:
+      primary: [112, 112]
+      secondary: [112, 112]
+      wrist: [128, 128]
+    
+    num_parallel_calls: 64
+
+  traj_transform_threads: 16
+  traj_read_threads: 32
