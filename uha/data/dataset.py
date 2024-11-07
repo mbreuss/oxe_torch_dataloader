@@ -66,13 +66,14 @@ class DatasetConfig:
     num_parallel_reads: int = tf.data.AUTOTUNE
     num_parallel_calls: int = tf.data.AUTOTUNE
     dataset_size_limit: Optional[int] = None
-    # Add robot-specific fields
     robot_name: Optional[str] = None
     action_space: Optional[str] = None
     proprio_encoding: Optional[str] = None
     action_encoding: Optional[str] = None
     num_arms: int = 1
     transform_type: str = "franka"
+    splits: Dict[str, str] = field(default_factory=lambda: {"train": "train", "val": "validation"})
+
 
     def __post_init__(self):
         """Validate and process configuration."""
@@ -186,54 +187,48 @@ class DatasetBuilder:
 
         return self._compute_statistics(builder)
 
-    def _compute_statistics(self, builder: tfds.core.DatasetBuilder) -> Dict[str, Any]:
-        """Compute dataset statistics."""
-        print("Computing dataset statistics...")
-        dataset = dl.DLataset.from_rlds(
-            builder,
-            split="all",
-            shuffle=False
-        )
-        print("Computing dataset statistics... just loaded dataset next step is to get_dataset_statistics")
-        print('-------------------')
-        for filter_fn_spec in self.config.filter_functions:
-            print(f"Attempting to instantiate filter function: {filter_fn_spec}")
-            instantiated_filter = ModuleSpec.instantiate(filter_fn_spec)
-            if callable(instantiated_filter):
-                dataset = dataset.filter(instantiated_filter)
-            else:
-                logger.error(f"Filter function {filter_fn_spec} could not be instantiated or is not callable.")
-
-            
-        if self.config.ignore_errors:
-            dataset = dataset.ignore_errors()
-            
-        dataset = dataset.traj_map(self._restructure).filter(self._is_nonzero_length)
-        print("Computing dataset statistics after filter and map")
-        return get_dataset_statistics(
-            dataset,
-            hash_dependencies=(
-                str(builder.info),
-                str(self.config.proprio_obs_key),
-                ModuleSpec.to_string(self.config.standardize_fn)
-                if self.config.standardize_fn is not None else "",
-                *map(ModuleSpec.to_string, self.config.filter_functions)
-            ),
-            save_dir=builder.data_dir,
-            force_recompute=self.config.force_recompute_dataset_statistics
-        )
-
     def _determine_split(self) -> str:
         """Determine appropriate dataset split."""
-        if self.config.dataset_size_limit is not None:
-            if self.config.train:
-                return f"train[:{self.config.dataset_size_limit}]"
-            return "val"
+        try:
+            if self.config.dataset_size_limit is not None:
+                if self.config.train:
+                    return f"train[:{self.config.dataset_size_limit}]"
+                return "validation"
 
-        if "val" not in self.config.split_keys:
-            return "train[:95%]" if self.config.train else "train[95%:]"
+            # Get available splits
+            builder = tfds.builder(self.config.name, data_dir=str(self.config.data_dir))
+            available_splits = builder.info.splits.keys()
             
-        return "train" if self.config.train else "val"
+            # Default split behavior
+            if "validation" not in available_splits:
+                if self.config.train:
+                    return "train[:95%]"
+                return "train[95%:]"
+                
+            return "train" if self.config.train else "validation"
+            
+        except Exception as e:
+            logger.error(f"Error determining split: {str(e)}")
+            raise
+
+    def _validate_config(self):
+        """Validate dataset configuration."""
+        required_keys = {"observation", "action"}
+        
+        # Ensure image_obs_keys is a dictionary
+        if hasattr(self.config.image_obs_keys, 'primary'):
+            self.config.image_obs_keys = convert_image_config_to_dict(self.config.image_obs_keys)
+            
+        # Validate keys
+        if not isinstance(self.config.image_obs_keys, dict):
+            raise ValueError("image_obs_keys must be a dictionary or ImageConfig")
+            
+        if not self.config.image_obs_keys:
+            raise ValueError("image_obs_keys cannot be empty")
+
+        # Initialize splits if not present
+        if not hasattr(self.config, 'splits'):
+            self.config.splits = {"train": "train", "val": "validation"}
 
     def _apply_filters(self, dataset: dl.DLataset) -> dl.DLataset:
         """Apply dataset filters."""
@@ -271,49 +266,135 @@ class DatasetBuilder:
         return dataset
 
     def _restructure(self, traj: Dict[str, Any]) -> Dict[str, Any]:
-        """Restructure trajectory data."""
-        if self.config.standardize_fn is not None:
-            traj = ModuleSpec.instantiate(self.config.standardize_fn)(traj)
+        """Restructure trajectory data with proper transform handling."""
+        try:
+            # Apply standardization transform if configured
+            if self.config.standardize_fn is not None:
+                transform_instance = ModuleSpec.instantiate(self.config.standardize_fn)
+                if callable(transform_instance):
+                    traj = transform_instance(traj)
+                else:
+                    logger.warning(f"Standardize function {self.config.standardize_fn} is not callable")
 
-        traj_len = tf.shape(traj["action"])[0]
-        obs = traj["observation"]
-        new_obs = {}
+            # Ensure we have a valid trajectory dict
+            if not isinstance(traj, dict):
+                raise ValueError(f"Expected trajectory dict, got {type(traj)}")
+            
+            if "action" not in traj:
+                raise ValueError("Trajectory missing required 'action' key")
 
-        # Process images
-        for new, old in self.config.image_obs_keys.items():
-            if old is None:
-                new_obs[f"image_{new}"] = tf.repeat("", traj_len)
-            else:
-                new_obs[f"image_{new}"] = obs[old]
+            traj_len = tf.shape(traj["action"])[0]
+            obs = traj["observation"]
+            new_obs = {}
 
-        # Process depth images
-        for new, old in self.config.depth_obs_keys.items():
-            if old is None:
-                new_obs[f"depth_{new}"] = tf.repeat("", traj_len)
-            else:
-                new_obs[f"depth_{new}"] = obs[old]
+            # Process images
+            for new_key, old_key in self.config.image_obs_keys.items():
+                if old_key is None:
+                    new_obs[f"image_{new_key}"] = tf.repeat("", traj_len)
+                else:
+                    if old_key not in obs:
+                        logger.warning(f"Image key {old_key} not found in observation")
+                        new_obs[f"image_{new_key}"] = tf.repeat("", traj_len)
+                    else:
+                        new_obs[f"image_{new_key}"] = obs[old_key]
 
-        # Process proprio
-        if self.config.proprio_obs_key is not None:
-            new_obs["proprio"] = tf.cast(obs[self.config.proprio_obs_key], tf.float32)
+            # Process depth images
+            if hasattr(self.config, 'depth_obs_keys') and self.config.depth_obs_keys:
+                for new_key, old_key in self.config.depth_obs_keys.items():
+                    if old_key is None:
+                        new_obs[f"depth_{new_key}"] = tf.repeat("", traj_len)
+                    else:
+                        if old_key not in obs:
+                            logger.warning(f"Depth key {old_key} not found in observation")
+                            new_obs[f"depth_{new_key}"] = tf.repeat("", traj_len)
+                        else:
+                            new_obs[f"depth_{new_key}"] = obs[old_key]
 
-        # Add timestep info
-        new_obs["timestep"] = tf.range(traj_len)
+            # Process proprio
+            if self.config.proprio_obs_key is not None and self.config.proprio_obs_key in obs:
+                new_obs["proprio"] = tf.cast(obs[self.config.proprio_obs_key], tf.float32)
 
-        # Process language instruction
-        task = {}
-        if self.config.language_key is not None:
-            task["language_instruction"] = sample_match_keys_uniform(
-                traj,
-                self.config.language_key
+            # Add timestep info
+            new_obs["timestep"] = tf.range(traj_len)
+
+            # Process language instruction
+            task = {}
+            if self.config.language_key is not None:
+                task["language_instruction"] = sample_match_keys_uniform(
+                    traj,
+                    self.config.language_key
+                )
+
+            return {
+                "observation": new_obs,
+                "task": task,
+                "action": tf.cast(traj["action"], tf.float32),
+                "dataset_name": tf.repeat(self.config.name, traj_len)
+            }
+
+        except Exception as e:
+            logger.error(f"Error in _restructure: {str(e)}")
+            raise
+
+    def _compute_statistics(self, builder: tfds.core.DatasetBuilder) -> Dict[str, Any]:
+        """Compute dataset statistics with proper transform handling."""
+        print("Computing dataset statistics...")
+        try:
+            dataset = dl.DLataset.from_rlds(
+                builder,
+                split="all",
+                shuffle=False
+            )
+            
+            # Apply filters
+            for filter_fn_spec in self.config.filter_functions:
+                try:
+                    filter_fn = ModuleSpec.instantiate(filter_fn_spec)
+                    if callable(filter_fn):
+                        dataset = dataset.filter(filter_fn)
+                except Exception as e:
+                    logger.error(f"Failed to apply filter {filter_fn_spec}: {e}")
+
+            if self.config.ignore_errors:
+                dataset = dataset.ignore_errors()
+
+            # Apply standardization transform if configured
+            if self.config.standardize_fn is not None:
+                try:
+                    def transform_fn(traj):
+                        if not isinstance(traj, dict):
+                            raise ValueError(f"Expected dict input, got {type(traj)}")
+                        # Call standardize_fn directly since ModuleSpec.__call__ is now implemented
+                        result = self.config.standardize_fn(traj)
+                        if not isinstance(result, dict):
+                            raise ValueError(f"Expected dict output, got {type(result)}")
+                        return result
+                    
+                    dataset = dataset.traj_map(transform_fn)
+                    
+                except Exception as e:
+                    logger.error(f"Error applying transform: {e}")
+                    raise
+
+            # Apply restructuring
+            dataset = dataset.traj_map(self._restructure).filter(self._is_nonzero_length)
+
+            return get_dataset_statistics(
+                dataset,
+                hash_dependencies=(
+                    str(builder.info),
+                    str(self.config.proprio_obs_key),
+                    ModuleSpec.to_string(self.config.standardize_fn) 
+                    if self.config.standardize_fn is not None else "",
+                    *map(ModuleSpec.to_string, self.config.filter_functions)
+                ),
+                save_dir=builder.data_dir,
+                force_recompute=self.config.force_recompute_dataset_statistics
             )
 
-        return {
-            "observation": new_obs,
-            "task": task,
-            "action": tf.cast(traj["action"], tf.float32),
-            "dataset_name": tf.repeat(self.config.name, traj_len)
-        }
+        except Exception as e:
+            logger.error(f"Failed to compute statistics: {str(e)}")
+            raise
 
     @staticmethod
     def _is_nonzero_length(traj: Dict[str, Any]) -> tf.Tensor:

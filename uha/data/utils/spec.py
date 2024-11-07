@@ -31,6 +31,10 @@ class ModuleSpec:
             self.kwargs = {}
         self._validate_spec()
 
+    def __call__(self, *args, **kwargs):
+        """Make ModuleSpec instances callable."""
+        return self.instantiate()(*args, **kwargs)
+    
     @classmethod
     def create(cls, 
                callable_or_full_name: Union[str, Callable, Type], 
@@ -62,15 +66,17 @@ class ModuleSpec:
 
 
     def instantiate(self, **override_kwargs) -> Callable:
-        """Instantiate with config if available."""
+        """Instantiate the specified callable."""
         try:
             cls = self._import_callable()
             kwargs = {**self.kwargs, **override_kwargs}
             
-            if self.config is not None:
-                # If config exists, pass it as first argument
-                return partial(cls, self.config, *self.args, **kwargs)
-            return partial(cls, *self.args, **kwargs)
+            # Return a callable that will properly instantiate and call the transform
+            def instantiated_callable(*args, **call_kwargs):
+                instance = cls(self.config, *self.args, **kwargs) if self.config else cls(*self.args, **kwargs)
+                return instance(*args, **call_kwargs)
+                
+            return instantiated_callable
             
         except Exception as e:
             logger.error(f"Error instantiating {self.module}:{self.name}: {str(e)}")

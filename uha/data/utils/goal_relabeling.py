@@ -206,3 +206,131 @@ def bound_uniform_and_future(traj: Dict[str, Any],
         frame_diff=frame_diff
     )
     return relabeler(traj)
+
+
+def _sample_future_index(traj_len: int, current_idx: int, min_dist: Optional[int] = None, max_dist: Optional[int] = None) -> tf.Tensor:
+    """Sample a future index uniformly from valid range."""
+    min_idx = current_idx + (min_dist if min_dist is not None else 0)
+    max_idx = tf.minimum(current_idx + (max_dist if max_dist is not None else traj_len), traj_len)
+    
+    rand = tf.random.uniform([])
+    sampled_idx = tf.cast(
+        rand * tf.cast(max_idx - min_idx, tf.float32) + tf.cast(min_idx, tf.float32),
+        tf.int32
+    )
+    
+    return tf.minimum(sampled_idx, traj_len - 1)
+
+def _get_future_indices(traj_len: int, frame_diff: int, window_size: int) -> tf.Tensor:
+    """Generate indices for future frames."""
+    base_indices = tf.range(traj_len)[:, None]
+    future_offsets = tf.range(frame_diff, frame_diff * window_size + 1, frame_diff)
+    indices = base_indices + future_offsets
+    return tf.minimum(indices, traj_len - 1)
+
+def uniform(traj: Dict[str, Any], max_goal_distance: Optional[int] = None) -> Dict[str, Any]:
+    """Relabel with uniform distribution over future states."""
+    traj_len = tf.shape(tf.nest.flatten(traj["observation"])[0])[0]
+    
+    goal_indices = tf.map_fn(
+        lambda i: _sample_future_index(traj_len, i, max_distance=max_goal_distance),
+        tf.range(traj_len)
+    )
+    
+    goal = {
+        "image_primary": tf.gather(traj["observation"]["image_primary"], goal_indices),
+        "pad_mask_dict": tf.nest.map_structure(
+            lambda x: tf.gather(x, goal_indices), 
+            traj["observation"]["pad_mask_dict"]
+        ),
+        "timestep": tf.gather(traj["observation"]["timestep"], goal_indices)
+    }
+    
+    traj["task"].update(goal)
+    return traj
+
+def uniform_and_future(traj: Dict[str, Any], max_goal_distance: Optional[int] = None, frame_diff: int = 1) -> Dict[str, Any]:
+    """Relabel with uniform distribution and track future frames."""
+    traj_len = tf.shape(tf.nest.flatten(traj["observation"])[0])[0]
+    
+    # Sample goal indices
+    goal_indices = tf.map_fn(
+        lambda i: _sample_future_index(traj_len, i, max_distance=max_goal_distance),
+        tf.range(traj_len)
+    )
+    
+    # Prepare goal observation
+    goal = {
+        "image_primary": tf.gather(traj["observation"]["image_primary"], goal_indices),
+        "pad_mask_dict": tf.nest.map_structure(
+            lambda x: tf.gather(x, goal_indices), 
+            traj["observation"]["pad_mask_dict"]
+        ),
+        "timestep": tf.gather(traj["observation"]["timestep"], goal_indices)
+    }
+    
+    traj["task"].update(goal)
+    
+    # Get future frame indices
+    future_indices = _get_future_indices(traj_len, frame_diff, 2)  # Default window size of 2
+    
+    # Add future observations
+    traj["future_obs"] = {
+        "image_primary": tf.gather(traj["observation"]["image_primary"], future_indices)
+    }
+    
+    return traj
+
+def bound_uniform(traj: Dict[str, Any], min_bound: Optional[int] = None, max_bound: Optional[int] = None) -> Dict[str, Any]:
+    """Relabel with uniform distribution within bounds."""
+    traj_len = tf.shape(tf.nest.flatten(traj["observation"])[0])[0]
+    
+    goal_indices = tf.map_fn(
+        lambda i: _sample_future_index(traj_len, i, min_dist=min_bound, max_dist=max_bound),
+        tf.range(traj_len)
+    )
+    
+    goal = {
+        "image_primary": tf.gather(traj["observation"]["image_primary"], goal_indices),
+        "pad_mask_dict": tf.nest.map_structure(
+            lambda x: tf.gather(x, goal_indices), 
+            traj["observation"]["pad_mask_dict"]
+        ),
+        "timestep": tf.gather(traj["observation"]["timestep"], goal_indices)
+    }
+    
+    traj["task"].update(goal)
+    return traj
+
+def bound_uniform_and_future(traj: Dict[str, Any], min_bound: Optional[int] = None, 
+                           max_bound: Optional[int] = None, frame_diff: int = 1) -> Dict[str, Any]:
+    """Relabel with bounded uniform distribution and track future frames."""
+    traj_len = tf.shape(tf.nest.flatten(traj["observation"])[0])[0]
+    
+    # Sample goal indices
+    goal_indices = tf.map_fn(
+        lambda i: _sample_future_index(traj_len, i, min_dist=min_bound, max_dist=max_bound),
+        tf.range(traj_len)
+    )
+    
+    # Prepare goal observation
+    goal = {
+        "image_primary": tf.gather(traj["observation"]["image_primary"], goal_indices),
+        "pad_mask_dict": tf.nest.map_structure(
+            lambda x: tf.gather(x, goal_indices), 
+            traj["observation"]["pad_mask_dict"]
+        ),
+        "timestep": tf.gather(traj["observation"]["timestep"], goal_indices)
+    }
+    
+    traj["task"].update(goal)
+    
+    # Get future frame indices  
+    future_indices = _get_future_indices(traj_len, frame_diff, 2)
+    
+    # Add future observations
+    traj["future_obs"] = {
+        "image_primary": tf.gather(traj["observation"]["image_primary"], future_indices)
+    }
+    
+    return traj

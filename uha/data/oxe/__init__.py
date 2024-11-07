@@ -182,13 +182,6 @@ def make_oxe_dataset_kwargs(
         logger.error(f"Error creating dataset kwargs for {name}: {str(e)}")
         raise
 
-def _normalize_data_dir(data_dir: Union[str, Path]) -> Path:
-    """Normalize data directory path."""
-    if isinstance(data_dir, str) and data_dir.startswith("~"):
-        return Path(os.path.expanduser("~")) / data_dir[1:]
-    return Path(data_dir)
-
-
 def _validate_camera_views(
     name: str,
     load_camera_views: Sequence[str],

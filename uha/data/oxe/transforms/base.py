@@ -56,16 +56,18 @@ class BaseTransform:
             raise ValueError("Number of arms must be at least 1")
 
     def __call__(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
-        """Transform trajectory."""
+        """Transform trajectory with proper error handling."""
         try:
             self._validate_trajectory(trajectory)
-            trajectory = self._process_images(trajectory)
-            trajectory = self._process_actions(trajectory)
-            trajectory = self._add_robot_info(trajectory)
-            return trajectory
+            processed = self._process_trajectory(trajectory)
+            return processed
         except Exception as e:
-            logger.error(f"Error transforming trajectory: {str(e)}")
+            logger.error(f"Error in transform: {str(e)}")
             raise
+
+    def _process_trajectory(self, trajectory: Dict[str, Any]) -> Dict[str, Any]:
+        """Process trajectory data. Override in subclasses."""
+        return trajectory
 
     def _validate_trajectory(self, trajectory: Dict[str, Any]):
         """Validate trajectory structure."""

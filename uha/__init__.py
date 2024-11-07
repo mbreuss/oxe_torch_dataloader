@@ -147,8 +147,8 @@ def get_oxe_dataset_tensorflow(cfg: DictConfig, train: bool):
         raise
 
 
-def get_single_dataset_tensorflow(cfg: DictConfig, train: bool):
-    """Get single OXE dataset with TensorFlow backend"""
+def get_single_dataset_tensorflow(cfg: DictConfig, train: bool = True):
+    """Get single OXE dataset with TensorFlow backend."""
     try:
         # Determine normalization type
         norm_type = getattr(cfg, "action_proprio_normalization_type", "normal")
@@ -157,7 +157,7 @@ def get_single_dataset_tensorflow(cfg: DictConfig, train: bool):
             
         action_proprio_normalization_type = NormalizationType(norm_type)
 
-        # Get dataset kwargs and weights
+        # Get dataset kwargs
         dataset_kwargs_list, _ = make_oxe_dataset_kwargs_and_weights(
             cfg.DATA_NAME,
             cfg.DATA_PATH,
@@ -165,30 +165,23 @@ def get_single_dataset_tensorflow(cfg: DictConfig, train: bool):
             load_camera_views=cfg.load_camera_views,
         )
 
-        logger.info(f"Constructing single {'val' if not train else 'train'} dataset: {dataset_kwargs_list[0]['name']}")
+        logger.info(f"Constructing single {'train' if train else 'val'} dataset: {dataset_kwargs_list[0]['name']}")
         
-        # Separate dataset kwargs from transform kwargs
+        # Prepare dataset kwargs
         dataset_kwargs = dataset_kwargs_list[0].copy()
         dataset_kwargs["train"] = train
         
-        # Create SingleDatasetConfig with transform kwargs
+        # Create config
         config = SingleDatasetConfig(
             train=train,
             traj_transform_kwargs=cfg.interleaved_dataset_cfg["traj_transform_kwargs"],
             frame_transform_kwargs=cfg.interleaved_dataset_cfg["frame_transform_kwargs"]
         )
 
-        dataset = make_single_dataset(
+        return make_single_dataset(
             dataset_kwargs=dataset_kwargs,
             config=config
         )
-        # Create dataset
-        dataset = make_single_dataset(
-            dataset_kwargs=dataset_kwargs,
-            config=config
-        )
-
-        return dataset
 
     except Exception as e:
         logger.error(f"Error creating single dataset: {str(e)}")

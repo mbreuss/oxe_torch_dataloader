@@ -1,16 +1,21 @@
+# In scripts/test_loader.py
+
 """
 Debug script for testing the refactored OXE dataset loader.
 """
 
 import os
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Union
+from enum import Enum, auto
 import hydra
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm 
 from omegaconf import DictConfig, OmegaConf
 import logging
 import torch
+import dlimp as dl
+import tensorflow_datasets as tfds
 
 from uha import (
     make_pytorch_oxe_iterable_dataset,
@@ -20,6 +25,11 @@ from uha import (
 
 logger = logging.getLogger(__name__)
 
+class DatasetMode(Enum):
+    """Enum for dataset modes."""
+    TRAIN = auto()
+    VALIDATION = auto()
+    EVALUATION = auto()
 
 class DatasetDebugger:
     """Helper class for debugging dataset loading and processing."""
@@ -39,13 +49,50 @@ class DatasetDebugger:
         """Load dataset with error handling."""
         try:
             if single_dataset:
-                self.dataset = get_single_dataset_tensorflow(self.cfg, train=True).repeat().unbatch()
+                self.dataset = get_single_dataset_tensorflow(
+                    self.cfg, 
+                    train=True
+                ).repeat().unbatch()
                 logger.info("Loaded single dataset")
             else:
-                self.dataset = get_octo_dataset_tensorflow(self.cfg, train=True)
+                self.dataset = get_octo_dataset_tensorflow(
+                    self.cfg, 
+                    train=True
+                )
                 logger.info("Loaded interleaved dataset")
         except Exception as e:
             logger.error(f"Failed to load dataset: {str(e)}")
+            raise
+
+    def _load_dataset(self, mode: DatasetMode) -> Union[dl.DLataset, None]:
+        """Load dataset with proper split handling."""
+        try:
+            if mode == DatasetMode.TRAIN:
+                split = "train"
+            else:
+                split = "validation"
+
+            # Get builder to check available splits
+            builder = tfds.builder(
+                self.cfg.DATA_NAME,
+                data_dir=str(self.cfg.DATA_PATH)
+            )
+            
+            # Adjust split if validation not available
+            if split == "validation" and "validation" not in builder.info.splits:
+                logger.warning("No validation split found, using last 5% of train")
+                split = "train[95%:]"
+            elif split == "train" and "validation" not in builder.info.splits:
+                split = "train[:95%]"
+
+            return dl.DLataset.from_rlds(
+                builder,
+                split=split,
+                shuffle=(mode == DatasetMode.TRAIN)
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to load {mode.name} dataset: {str(e)}")
             raise
 
     def create_dataloader(self, batch_size: int = 1024, is_single_dataset: bool = False):

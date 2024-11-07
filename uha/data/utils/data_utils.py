@@ -9,11 +9,13 @@ import hashlib
 import json
 import logging
 import os
-
+from copy import copy
 import dlimp as dl
 import numpy as np
 import tensorflow as tf
-import tqdm
+from tqdm.auto import tqdm
+# import 
+import tensorflow_probability as tfp
 
 logger = logging.getLogger(__name__)
 
@@ -331,116 +333,111 @@ def get_dataset_statistics(
     hash_dependencies: Tuple[str, ...],
     save_dir: Optional[str] = None,
     force_recompute: bool = False,
-) -> dict:
-    """Either computes the statistics of a dataset or loads them from a cache file if this function has been
-    called before with the same `hash_dependencies`. Currently, the statistics include the min/max/mean/std of
-    the actions and proprio as well as the number of transitions and trajectories in the dataset.
-    """
-    print("Inside get_dataset_statistics")
-    unique_hash = hashlib.sha256(
-        "".join(hash_dependencies).encode("utf-8"),
-        usedforsecurity=False,
-    ).hexdigest()
-
-    # fallback local path for when data_dir is not writable or not provided
-    local_path = os.path.expanduser(
-        os.path.join(
-            "~",
-            ".cache",
-            "octo",
-            f"dataset_statistics_{unique_hash}.json",
-        )
-    )
-
-    if save_dir is not None:
-        path = tf.io.gfile.join(save_dir, f"dataset_statistics_{unique_hash}.json")
-    else:
-        path = local_path
-
-    # check if cache file exists and load
-    if tf.io.gfile.exists(path) and not force_recompute:
-        logging.info(f"Loading existing dataset statistics from {path}.")
-        with tf.io.gfile.GFile(path, "r") as f:
-            metadata = json.load(f)
-        return metadata
-
-    if os.path.exists(local_path) and not force_recompute:
-        logging.info(f"Loading existing dataset statistics from {local_path}.")
-        with open(local_path, "r") as f:
-            metadata = json.load(f)
-        return metadata
-
-    dataset = dataset.traj_map(
-        lambda traj: {
-            "action": traj["action"],
-            **(
-                {"proprio": traj["observation"]["proprio"]}
-                if "proprio" in traj["observation"]
-                else {}
-            ),
-        }
-    )
-
-    cardinality = dataset.cardinality().numpy()
-    if cardinality == tf.data.INFINITE_CARDINALITY:
-        raise ValueError("Cannot compute dataset statistics for infinite datasets.")
-
-    logging.info(
-        "Computing dataset statistics. This may take awhile, but should only need to happen "
-        "once for each dataset."
-    )
-    actions = []
-    proprios = []
-    num_transitions = 0
-    num_trajectories = 0
-    for traj in tqdm.tqdm(
-        dataset.iterator(),
-        total=cardinality if cardinality != tf.data.UNKNOWN_CARDINALITY else None,
-    ):
-        actions.append(traj["action"])
-        if "proprio" in traj:
-            proprios.append(traj["proprio"])
-        num_transitions += traj["action"].shape[0]
-        num_trajectories += 1
-    actions = np.concatenate(actions)
-    metadata = {
-        "action": {
-            "mean": actions.mean(0).tolist(),
-            "std": actions.std(0).tolist(),
-            "max": actions.max(0).tolist(),
-            "min": actions.min(0).tolist(),
-            "p99": np.quantile(actions, 0.99, 0).tolist(),
-            "p01": np.quantile(actions, 0.01, 0).tolist(),
-        },
-        "num_transitions": num_transitions,
-        "num_trajectories": num_trajectories,
-    }
-    if proprios:
-        proprios = np.concatenate(proprios)
-        metadata["proprio"] = {
-            "mean": proprios.mean(0).tolist(),
-            "std": proprios.std(0).tolist(),
-            "max": proprios.max(0).tolist(),
-            "min": proprios.min(0).tolist(),
-            "p99": np.quantile(proprios, 0.99, 0).tolist(),
-            "p01": np.quantile(proprios, 0.01, 0).tolist(),
-        }
-
+) -> Dict[str, Any]:
+    """Get or compute dataset statistics."""
     try:
-        with tf.io.gfile.GFile(path, "w") as f:
-            json.dump(metadata, f)
-    except tf.errors.PermissionDeniedError:
-        logging.warning(
-            f"Could not write dataset statistics to {path}. "
-            f"Writing to {local_path} instead."
+        # Get statistics path
+        unique_hash = hashlib.sha256(
+            "".join(hash_dependencies).encode("utf-8"),
+            usedforsecurity=False
+        ).hexdigest()
+
+        local_path = os.path.expanduser(
+            os.path.join("~", ".cache", "octo", f"dataset_statistics_{unique_hash}.json")
         )
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        with open(local_path, "w") as f:
-            json.dump(metadata, f)
+        
+        path = tf.io.gfile.join(save_dir, f"dataset_statistics_{unique_hash}.json") if save_dir else local_path
 
-    return metadata
+        # Try to load cached statistics
+        if not force_recompute:
+            try:
+                if tf.io.gfile.exists(path):
+                    logger.info(f"Loading existing dataset statistics from {path}.")
+                    with tf.io.gfile.GFile(path, "r") as f:
+                        stats = json.load(f)
+                        # Convert loaded lists to numpy arrays
+                        for key in ["action", "proprio"]:
+                            if key in stats:
+                                for stat_key in ["mean", "std", "max", "min", "p99", "p01"]:
+                                    if stat_key in stats[key]:
+                                        stats[key][stat_key] = tf.constant(
+                                            stats[key][stat_key], 
+                                            dtype=tf.float32
+                                        )
+                        return stats
+            except Exception as e:
+                logger.warning(f"Error loading statistics from {path}: {e}")
 
+        # Compute statistics
+        logger.info("Computing dataset statistics...")
+        actions = []
+        proprios = []
+        num_transitions = 0
+        num_trajectories = 0
 
+        # Use tqdm from auto
+        for traj in tqdm(
+            dataset.iterator(),
+            desc="Computing statistics",
+            unit="trajectories"
+        ):
+            actions.append(traj["action"])
+            if "proprio" in traj:
+                proprios.append(traj["proprio"])
+            num_transitions += traj["action"].shape[0]
+            num_trajectories += 1
+
+        if not actions:
+            raise ValueError("No trajectories found in dataset")
+
+        # Compute statistics using TensorFlow
+        actions = tf.concat(actions, axis=0)
+        metadata = {
+            "action": {
+                "mean": tf.reduce_mean(actions, axis=0),
+                "std": tf.math.reduce_std(actions, axis=0),
+                "max": tf.reduce_max(actions, axis=0),
+                "min": tf.reduce_min(actions, axis=0),
+                "p99": tfp.stats.percentile(actions, 99.0, axis=0),
+                "p01": tfp.stats.percentile(actions, 1.0, axis=0),
+            },
+            "num_transitions": int(num_transitions),
+            "num_trajectories": int(num_trajectories),
+        }
+
+        if proprios:
+            proprios = tf.concat(proprios, axis=0)
+            metadata["proprio"] = {
+                "mean": tf.reduce_mean(proprios, axis=0),
+                "std": tf.math.reduce_std(proprios, axis=0),
+                "max": tf.reduce_max(proprios, axis=0),
+                "min": tf.reduce_min(proprios, axis=0),
+                "p99": tfp.stats.percentile(proprios, 99.0, axis=0),
+                "p01": tfp.stats.percentile(proprios, 1.0, axis=0),
+            }
+
+        # Save statistics
+        try:
+            # Convert tensors to lists for JSON serialization
+            json_metadata = copy.deepcopy(metadata)
+            for key in ["action", "proprio"]:
+                if key in json_metadata:
+                    for stat_key in ["mean", "std", "max", "min", "p99", "p01"]:
+                        if stat_key in json_metadata[key]:
+                            json_metadata[key][stat_key] = json_metadata[key][stat_key].numpy().tolist()
+                            
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with tf.io.gfile.GFile(path, "w") as f:
+                json.dump(json_metadata, f, indent=2)
+                
+        except Exception as e:
+            logger.warning(f"Could not save statistics to {path}: {e}")
+
+        return metadata
+
+    except Exception as e:
+        logger.error(f"Error in get_dataset_statistics: {str(e)}")
+        raise
 def combine_dataset_statistics(
     all_dataset_statistics: Sequence[dict],
 ) -> dict:
@@ -528,56 +525,20 @@ def tree_map(fn: Callable, tree: dict) -> dict:
 
 
 def normalize_action_and_proprio(
-    traj: dict, metadata: dict, normalization_type: NormalizationType
-):
-    """Normalizes the action and proprio fields of a trajectory using the given metadata."""
-    # maps keys of `metadata` to corresponding keys in `traj`
-    keys_to_normalize = {
-        "action": "action",
-    }
-    if "proprio" in traj["observation"]:
-        keys_to_normalize["proprio"] = "observation/proprio"
-
-    if normalization_type == NormalizationType.NORMAL:
-        # normalize to mean 0, std 1
-        for key, traj_key in keys_to_normalize.items():
-            mask = metadata[key].get(
-                "mask", tf.ones_like(metadata[key]["mean"], dtype=tf.bool)
-            )
-            traj = dl.transforms.selective_tree_map(
-                traj,
-                match=lambda k, _: k == traj_key,
-                map_fn=lambda x: tf.where(
-                    mask, (x - metadata[key]["mean"]) / (metadata[key]["std"] + 1e-8), x
-                ),
-            )
-        return traj
-
-    if normalization_type == NormalizationType.BOUNDS:
-        # normalize to [-1, 1]
-        for key, traj_key in keys_to_normalize.items():
-            mask = metadata[key].get(
-                "mask", tf.ones_like(metadata[key]["p01"], dtype=tf.bool)
-            )
-            traj = dl.transforms.selective_tree_map(
-                traj,
-                match=lambda k, _: k == traj_key,
-                map_fn=lambda x: tf.where(
-                    mask,
-                    tf.clip_by_value(
-                        2
-                        * (x - metadata[key]["p01"])
-                        / (metadata[key]["p99"] - metadata[key]["p01"] + 1e-8)
-                        - 1,
-                        -1,
-                        1,
-                    ),
-                    x,
-                ),
-            )
-        return traj
-
-    raise ValueError(f"Unknown normalization type {normalization_type}")
+    traj: Dict[str, Any],
+    metadata: Dict[str, Any],
+    normalization_type: NormalizationType
+) -> Dict[str, Any]:
+    """Normalize action and proprio data using Normalizer class."""
+    try:
+        return Normalizer.normalize_data(
+            traj=traj,
+            metadata=metadata,
+            normalization_type=normalization_type
+        )
+    except Exception as e:
+        logger.error(f"Error in normalize_action_and_proprio: {str(e)}")
+        raise
 
 
 def tree_merge(*trees: dict) -> dict:
