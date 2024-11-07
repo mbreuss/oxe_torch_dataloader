@@ -285,6 +285,18 @@ SIMPLER_LIBERO_ALL = [
   ("fractal20220817_data", 1.0),
 ]
 
+MO = [
+    # ("cmu_play_fusion", 1.0),
+    # ("nyu_door_opening_surprising_effectiveness", 1.0), # dataloader iteration not starting
+    # ("berkeley_cable_routing", 3.0),   # not iterating either so far 
+    # ("libero_10_no_noops", 8.0),
+    # ("rh20t", 0.5), # not found maybe download?
+    # ("utaustin_mutex", 1.0), # dataloader iteration not starting
+    # ("columbia_cairlab_pusht_real", 1.0),
+    ("bridge_dataset", 1.0),
+    # ("nyu_franka_play_dataset_converted_externally_to_rlds", 1.0),
+]
+
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
     "simpler_env": SIMPLER_ENV,
@@ -314,4 +326,5 @@ OXE_NAMED_MIXES = {
     "small_test": SMALL_TEST_SET,
     "libero_all": LIBERO_ALL,
     "simulation_all": SIMPLER_LIBERO_ALL,
+    "mo": MO,
 }

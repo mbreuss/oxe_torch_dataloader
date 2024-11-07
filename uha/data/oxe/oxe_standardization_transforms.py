@@ -1149,6 +1149,14 @@ def rh20t_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["action"] = tf.concat(
+        (
+            trajectory["observation"]["tcp_base"],  # Current TCP position in base frame
+            tf.cast(trajectory["observation"]["gripper"][:, None], tf.float32),  # Current gripper state
+        ),
+        axis=-1,
+    )
     return trajectory
 
 
