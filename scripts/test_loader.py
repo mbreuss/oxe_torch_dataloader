@@ -14,6 +14,9 @@ import torch
 from uha import make_pytorch_oxe_iterable_dataset, get_octo_dataset_tensorflow
 from omegaconf import DictConfig, OmegaConf
 import logging
+from uha.data.utils.dataset_diagnostics import diagnose_dataset_loading, test_dataset_loading, analyze_transform_compatibility
+from uha.data.oxe import make_oxe_dataset_kwargs_and_weights
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -82,6 +85,27 @@ def optimize_dataset_config(cfg):
 @hydra.main(config_path="../uha/data/conf", config_name="uha_default_load_config")
 def main(cfg: DictConfig):
     try:
+        # Run diagnostics first
+        dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
+            cfg.DATA_NAME,
+            cfg.DATA_PATH,
+            load_camera_views=cfg.load_camera_views,
+        )
+        
+        for dataset_kwargs in dataset_kwargs_list:
+            # Run diagnostics
+            diagnostic_results = diagnose_dataset_loading(dataset_kwargs)
+            if diagnostic_results["has_critical_issues"]:
+                logger.error("Critical issues found in dataset configuration")
+                continue
+                
+            # Check transform compatibility
+            warnings = analyze_transform_compatibility(dataset_kwargs)
+            for warning in warnings:
+                logger.warning(warning)
+            
+            # Test dataset loading
+            test_dataset_loading(dataset_kwargs)
         logger.info("Starting dataset loading process...")
         
         # Setup specific GPU

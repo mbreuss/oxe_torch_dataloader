@@ -126,11 +126,6 @@ OXE_DATASET_CONFIGS = {
         "proprio_encoding": ProprioEncoding.POS_QUAT,
         "action_encoding": ActionEncoding.EEF_POS,
         "language_key": "language_instruction*",
-         "aux_kwargs": {
-            "dataset_frame_transform_kwargs": {
-                "chunk_filter_fn": zero_action_filter,
-            },
-        },
        #  "dataset_size_limit": 1000,
         # "shuffle": False,
     },
@@ -145,6 +140,7 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_QUAT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "language_key": "natural_language_instruction",  # No wildcard since we're using this exact key
     },
     # NOTE: this is not actually the official OXE copy of bridge, it is our own more up-to-date copy that you
     # can find at https://rail.eecs.berkeley.edu/datasets/bridge_release/data/tfds/
@@ -190,6 +186,7 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.EEF_POS,
+        "language_key": "language_instruction*",  # Add wildcard
     },
     "roboturk": {
         "image_obs_keys": {"primary": "front_rgb", "secondary": None, "wrist": None},

@@ -17,10 +17,15 @@ from uha.data.utils.data_utils import (
     normalize_action_and_proprio,
     pprint_data_mixture,
     sample_match_keys_uniform,
+    
     tree_map,
 )
 from uha.data.utils.spec import ModuleSpec
+from uha.data.utils.rlds_utils import *
 
+from uha.data.oxe.oxe_standardization_transforms import (
+    get_action_space_index,
+)
 
 def apply_trajectory_transforms(
     dataset: dl.DLataset,
@@ -349,189 +354,100 @@ def make_dataset_from_rlds(
         - dataset_name                  # name of the dataset
     """
     REQUIRED_KEYS = {"observation", "action"}
-    # force_recompute_dataset_statistics = True
 
-    def restructure(traj):
-        # apply a standardization function, if provided
+    def restructure(traj: dict) -> dict:
+        """Restructure trajectory into standardized format."""
         if standardize_fn is not None:
             traj = ModuleSpec.instantiate(standardize_fn)(traj)
 
         if not all(k in traj for k in REQUIRED_KEYS):
-            raise ValueError(
-                f"Trajectory is missing keys: {REQUIRED_KEYS - set(traj.keys())}. "
-                "Did you write a `standardize_fn`?"
+            raise ValueError(f"Missing keys: {REQUIRED_KEYS - set(traj.keys())}. Check standardize_fn.")
+
+        # Process main components
+        new_obs, traj_len = RLDSProcessing.process_observations(
+            traj, image_obs_keys, depth_obs_keys, proprio_obs_key
+        )
+        task, local_lang_key = RLDSProcessing.process_language(
+            traj, traj_len, Gt_ann_dirs, NILS_ann_dirs, language_key, language_key_NILS
+        )
+        RLDSProcessing.add_language_metadata(task, local_lang_key, traj_len, language_key)
+        
+        # Process robot information
+        robot_information = RLDSProcessing.process_robot_information(traj["observation"], traj_len)
+        task['robot_information'] = robot_information
+
+        # Process action space index
+        try:
+            task['action_space_index'] = tf.cast(
+                convert_scalar_to_1d(traj['action_space_index'], task['robot_information']), 
+                tf.int32
             )
-
-        # extracts images, depth images and proprio from the "observation" dict
-        traj_len = tf.shape(traj["action"])[0]
-        old_obs = traj["observation"]
-        new_obs = {}
-        for new, old in image_obs_keys.items():
-            if old is None:
-                new_obs[f"image_{new}"] = tf.repeat("", traj_len)  # padding
-            else:
-                new_obs[f"image_{new}"] = old_obs[old]
-
-        for new, old in depth_obs_keys.items():
-            if old is None:
-                new_obs[f"depth_{new}"] = tf.repeat("", traj_len)  # padding
-            else:
-                new_obs[f"depth_{new}"] = old_obs[old]
-
-        if proprio_obs_key is not None:
-            new_obs["proprio"] = tf.cast(old_obs[proprio_obs_key], tf.float32)
-
-        # add timestep info
-        new_obs["timestep"] = tf.range(traj_len)
-
-        # extracts `language_key` into the "task" dict, or samples uniformly if `language_key` fnmatches multiple keys
-        task = {}
-
-        if Gt_ann_dirs is not None and NILS_ann_dirs is not None:
-            # NILS language_instruction
-            path = traj["traj_metadata"]["episode_metadata"]["file_path"][0]
-            gt_ann_dirs_regex = "|".join([".*" + key + ".*" for key in Gt_ann_dirs])
-            NILS_ann_dirs_regex = "|".join([".*" + key + ".*" for key in NILS_ann_dirs])
-            #use_gt_ann = any([key in path for key in Gt_ann_dirs])
-            #use_NILS_ann = any([key in path for key in NILS_ann_dirs])
-            use_gt_ann=  tf.strings.regex_full_match(path, gt_ann_dirs_regex)
-            use_NILS_ann= tf.strings.regex_full_match(path, NILS_ann_dirs_regex)
-            if len(Gt_ann_dirs) > 0 and Gt_ann_dirs[0] == "REMAINING" and not use_NILS_ann:
-                use_gt_ann = True
-                use_NILS_ann = False
-
-            logging.info(f"GT: {use_gt_ann}")
-            logging.info(f"NILS: {use_NILS_ann}")
-
-            if use_gt_ann:
-                logging.info("Using GT")
-                task["language_instruction"] = sample_match_keys_uniform(traj, language_key)
-                local_lang_key = language_key
-            elif use_NILS_ann:
-                task["language_instruction"] = sample_match_keys_uniform(traj, language_key_NILS + "*")
-                local_lang_key = language_key_NILS
-            else:
-                task["language_instruction"] =  sample_match_keys_uniform(traj, language_key_NILS + "*")
-                local_lang_key = "ERROR"
-        else:
-            # normal language_instruction
-            local_lang_key = language_key
-            if language_key is not None:
-                task["language_instruction"] = sample_match_keys_uniform(traj, language_key)
-
-        logging.info(f"Local Lang Key: {local_lang_key}")
-        if language_key is not None:
-            # additional NILS stuff, doesn't affect normal language_instruction
-            if local_lang_key == "ERROR":
-                task["language_key"] = tf.repeat(-1, traj_len)
-            elif tf.strings.regex_full_match(local_lang_key, ".*NILS.*"):
-                task["language_key"] = tf.repeat(1, traj_len)
-            else:
-                task["language_key"] = tf.repeat(0, traj_len)
-
-            if task["language_instruction"].dtype != tf.string:
-                raise ValueError(
-                    f"Language key {local_lang_key} has dtype {task['language_instruction'].dtype}, "
-                    "but it must be tf.string."
-                )
-        traj = {
+        except Exception as e:
+            logger.warning(f"Failed to process action_space_index: {e}")
+        try:
+            frequency = RLDSProcessing.process_frequency(traj, traj_len)
+            task['frequency'] = frequency
+            print(f'Frequency: {frequency}')
+            # Validate shape matches
+            tf.debugging.assert_equal(
+                tf.shape(frequency)[0],
+                traj_len,
+                message="frequency shape should match trajectory length"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to process frequency: {e}")
+            # Optionally provide a default value if processing fails
+            task['frequency'] = tf.repeat(1, traj_len)  # Default to 1Hz if processing fails
+        return {
             "observation": new_obs,
             "task": task,
             "action": tf.cast(traj["action"], tf.float32),
             "dataset_name": tf.repeat(name, traj_len),
         }
 
-        return traj
-
-    def is_nonzero_length(traj):
-        return tf.shape(traj["action"])[0] > 0
-
-    if name == "bc_z":
-        name = name + ":0.1.0"
+    # Main execution flow starts here
+    name = name + ":0.1.0" if name == "bc_z" else 'droid' if name == 'eef_droid' else name
     builder = tfds.builder(name, data_dir=data_dir)
-
-    # load or compute dataset statistics
+    
+    # Handle dataset statistics
     if isinstance(dataset_statistics, str):
         with tf.io.gfile.GFile(dataset_statistics, "r") as f:
             dataset_statistics = json.load(f)
     elif dataset_statistics is None:
-        full_dataset = dl.DLataset.from_rlds(builder, split="all", shuffle=False)
-        for filter_fcn_spec in filter_functions:
-            full_dataset = full_dataset.filter(ModuleSpec.instantiate(filter_fcn_spec))
-        if ignore_errors:
-            full_dataset = full_dataset.ignore_errors()
-        full_dataset = full_dataset.traj_map(restructure).filter(is_nonzero_length)
-        # tries to load from cache, otherwise computes on the fly
-        dataset_statistics = get_dataset_statistics(
-            full_dataset,
-            hash_dependencies=(
-                str(builder.info),
-                str(proprio_obs_key),
-                ModuleSpec.to_string(standardize_fn)
-                if standardize_fn is not None
-                else "",
-                *map(ModuleSpec.to_string, filter_functions),
-            ),
-            save_dir=builder.data_dir,
-            force_recompute=force_recompute_dataset_statistics,
+        dataset_statistics = compute_dataset_statistics(
+            builder, filter_functions, ignore_errors, restructure,
+            proprio_obs_key, standardize_fn, force_recompute_dataset_statistics
         )
+    
     dataset_statistics = tree_map(np.array, dataset_statistics)
+    DatasetUtils.validate_normalization_mask(action_normalization_mask, dataset_statistics)
 
-    # skip normalization for certain action dimensions
-    if action_normalization_mask is not None:
-        if (
-            len(action_normalization_mask)
-            != dataset_statistics["action"]["mean"].shape[-1]
-        ):
-            raise ValueError(
-                f"Length of skip_normalization_mask ({len(action_normalization_mask)}) "
-                f"does not match action dimension ({dataset_statistics['action']['mean'].shape[-1]})."
-            )
-        dataset_statistics["action"]["mask"] = np.array(action_normalization_mask)
-
-    # construct the dataset
-    if dataset_size_limit is not None and isinstance(dataset_size_limit, int):
-        if train and builder.info.splits["train"].num_examples >= (dataset_size_limit + int(dataset_size_limit * 0.05)):
-            split = "train[:" + str(dataset_size_limit) + "]"
-        elif train and "val" not in builder.info.splits:
-            split = "train[:95%]"
-        elif train:
-            split = "train"
-        elif not train and "val" not in builder.info.splits:
-            split = "train[95%:]"
-        else:
-            split = "val"
-    else:
-        if "val" not in builder.info.splits:
-            split = "train[:95%]" if train else "train[95%:]"
-        else:
-            split = "train" if train else "val"
-
+    # Build and process dataset
+    split = DatasetUtils.get_dataset_split(builder, train, dataset_size_limit)
     dataset = dl.DLataset.from_rlds(
         builder, split=split, shuffle=shuffle, num_parallel_reads=num_parallel_reads
     )
+    
+    # Apply filters and transformations
     for filter_fcn_spec in filter_functions:
         dataset = dataset.filter(ModuleSpec.instantiate(filter_fcn_spec))
+    
     if ignore_errors:
         dataset = dataset.ignore_errors()
 
     dataset = dataset.traj_map(restructure, num_parallel_calls).filter(
-        is_nonzero_length
+        lambda traj: tf.shape(traj["action"])[0] > 0
     )
 
     if not skip_norm:
         dataset = dataset.traj_map(
-            partial(
-                normalize_action_and_proprio,
-                metadata=dataset_statistics,
-                normalization_type=action_proprio_normalization_type,
-            ),
+            partial(normalize_action_and_proprio,
+                   metadata=dataset_statistics,
+                   normalization_type=action_proprio_normalization_type),
             num_parallel_calls,
         )
     else:
-        logging.warning(
-            "Dataset normalization turned off -- set skip_norm=False to apply normalization."
-        )
+        logger.warning("Dataset normalization disabled (skip_norm=True)")
 
     return dataset, dataset_statistics
 
@@ -629,7 +545,8 @@ def make_interleaved_dataset(
         all_dataset_statistics[dataset_kwargs["name"]] = dataset_statistics
 
     # Get the indices of the "primary" datasets (i.e., datasets with sample_weight >= 1.0)
-    primary_dataset_indices = np.array([idx for idx in range(len(sample_weights)) if sample_weights[idx] >= 1.0])
+    primary_dataset_indices = np.array([idx for idx in range(len(sample_weights)) 
+                                    if sample_weights[idx] >= 1.0], dtype=np.int64)
 
     # balance and normalize weights
     if balance_weights:
@@ -637,10 +554,18 @@ def make_interleaved_dataset(
     sample_weights = np.array(sample_weights) / np.sum(sample_weights)
     pprint_data_mixture(dataset_kwargs_list, sample_weights)
 
+    # Effective Dataset Length calculation
+    if len(primary_dataset_indices) > 0:
+        dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
+    else:
+        # Fallback when no primary datasets exist
+        dataset_len = int((np.array(dataset_sizes) / sample_weights).max())
+    # Or alternatively, you could use a default value:
+    # dataset_len = max(dataset_sizes[0])  # or some other default
     # Effective Dataset Length = Number of samples until each dataset has completed at least one epoch
     #   =>> Note :: Only counting the "primary" datasets (i.e., datasets with sample_weight >= 1.0)
-    dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
-
+    # dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
+    # dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
     # allocate threads based on weights
     threads_per_dataset = allocate_threads(traj_transform_threads, sample_weights)
     reads_per_dataset = allocate_threads(traj_read_threads, sample_weights)

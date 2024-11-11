@@ -550,33 +550,53 @@ def relabel_actions(traj: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def allocate_threads(n: Optional[int], weights: np.ndarray):
-    """Allocates an integer number of threads across datasets based on weights. The final array sums to `n`,
-    but each element is no less than 1. If `n` is None, then every dataset is assigned a value of AUTOTUNE.
+    """Allocates an integer number of threads across datasets based on weights.
+    If n is smaller than len(weights), it automatically adjusts n to len(weights)
+    to ensure each dataset gets at least one thread.
+    
+    Args:
+        n: Number of threads to allocate. If None, assigns AUTOTUNE to all datasets.
+        weights: Array of weights for each dataset (non-negative values).
+        
+    Returns:
+        np.ndarray: Array of allocated threads for each dataset.
     """
     if n is None:
         return np.array([tf.data.AUTOTUNE] * len(weights))
 
     assert np.all(weights >= 0), "Weights must be non-negative"
-    assert (
-        len(weights) <= n
-    ), "Number of threads must be at least as large as length of weights"
+    
+    # Ensure n is at least as large as len(weights)
+    n_adjusted = max(n, len(weights))
+    if n_adjusted != n:
+        print(f"Warning: Adjusted number of threads from {n} to {n_adjusted} to ensure each dataset gets at least one thread")
+    
     weights = np.array(weights) / np.sum(weights)
-
     allocation = np.zeros_like(weights, dtype=int)
+    
+    remaining_n = n_adjusted
+    remaining_weights = weights.copy()
+    
     while True:
         # give the remaining elements that would get less than 1 a 1
-        mask = (weights * n < 1) & (weights > 0)
+        mask = (remaining_weights * remaining_n < 1) & (remaining_weights > 0)
         if not mask.any():
             break
-        n -= mask.sum()
+        remaining_n -= mask.sum()
         allocation += mask.astype(int)
         # recompute the distribution over the remaining elements
-        weights[mask] = 0
-        weights = weights / weights.sum()
+        remaining_weights[mask] = 0
+        if remaining_weights.sum() > 0:  # Avoid division by zero
+            remaining_weights = remaining_weights / remaining_weights.sum()
+            
     # allocate the remaining elements
-    fractional, integral = np.modf(weights * n)
-    allocation += integral.astype(int)
-    n -= integral.sum()
-    for i in np.argsort(fractional)[::-1][: int(n)]:
-        allocation[i] += 1
+    if remaining_n > 0 and remaining_weights.sum() > 0:
+        fractional, integral = np.modf(remaining_weights * remaining_n)
+        allocation += integral.astype(int)
+        remaining_n -= integral.sum()
+        
+        # Distribute any remaining threads
+        for i in np.argsort(fractional)[::-1][:int(remaining_n)]:
+            allocation[i] += 1
+            
     return allocation
