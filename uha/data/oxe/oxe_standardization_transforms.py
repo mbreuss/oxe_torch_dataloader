@@ -563,6 +563,7 @@ def language_table_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
     ].to_tensor()[:, 0]
     trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
+    trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
 
 

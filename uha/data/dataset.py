@@ -373,9 +373,8 @@ def make_dataset_from_rlds(
         RLDSProcessing.add_language_metadata(task, local_lang_key, traj_len, language_key)
         
         # Process robot information
-        robot_information = RLDSProcessing.process_robot_information(traj["observation"], traj_len)
-        task['robot_information'] = robot_information
-
+        task['robot_information'] = RLDSProcessing.process_robot_information(traj["observation"], traj_len)
+        task['dataset_index'] = RLDSProcessing.process_dataset_index(traj, traj_len, name)
         # Process action space index
         try:
             task['action_space_index'] = tf.cast(
@@ -398,6 +397,7 @@ def make_dataset_from_rlds(
             logger.warning(f"Failed to process frequency: {e}")
             # Optionally provide a default value if processing fails
             task['frequency'] = tf.repeat(1, traj_len)  # Default to 1Hz if processing fails
+
         return {
             "observation": new_obs,
             "task": task,
@@ -560,12 +560,6 @@ def make_interleaved_dataset(
     else:
         # Fallback when no primary datasets exist
         dataset_len = int((np.array(dataset_sizes) / sample_weights).max())
-    # Or alternatively, you could use a default value:
-    # dataset_len = max(dataset_sizes[0])  # or some other default
-    # Effective Dataset Length = Number of samples until each dataset has completed at least one epoch
-    #   =>> Note :: Only counting the "primary" datasets (i.e., datasets with sample_weight >= 1.0)
-    # dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
-    # dataset_len = int((np.array(dataset_sizes) / sample_weights)[primary_dataset_indices].max())
     # allocate threads based on weights
     threads_per_dataset = allocate_threads(traj_transform_threads, sample_weights)
     reads_per_dataset = allocate_threads(traj_read_threads, sample_weights)

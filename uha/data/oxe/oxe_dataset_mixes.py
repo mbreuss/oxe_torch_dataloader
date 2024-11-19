@@ -286,20 +286,15 @@ SIMPLER_LIBERO_ALL = [
 ]
 
 MO = [
-    # ("taco_play", 2.0),
-    ("eef_droid", 0.5),
-    ("dobbe", 1.0),
+    ("taco_play", 2.0),
+    ("eef_droid", 0.2),
+    ("dobbe", 0.6),
     ("fractal20220817_data", 0.5),
-    # ("toto", 1.0),
-    # ("cmu_play_fusion", 1.0),
-    # ("nyu_door_opening_surprising_effectiveness", 1.0), # dataloader iteration not starting
-    # ("berkeley_cable_routing", 3.0),   # no langauge
-    # ("libero_10_no_noops", 8.0),
-    # ("rh20t", 0.5), # not found maybe download?
-    # ("utaustin_mutex", 1.0), # has only templated lang annotations
-    # ("columbia_cairlab_pusht_real", 1.0),
-    ("bridge_dataset", 2.0),
-    # ("kuka", 0.8341046294),
+    ("bc_z", 0.1),
+    ("cmu_play_fusion", 2.0),
+    ("libero_10_no_noops", 2.0),
+    ("bridge_dataset", 1.0),
+    ("language_table", 0.1),
     
 ]
 

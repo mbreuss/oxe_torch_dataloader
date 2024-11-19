@@ -77,6 +77,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             return sub_batch
 
     def transform_sample(self, sample):
+        
         dicts = ["observation", "task", "future_obs"]
         if self._move_axis:
             for key in dicts:
@@ -114,12 +115,20 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 else:
                     sample["task"]["language_instruction"] = self._language_encoder("")
 
-        if "robot_information" in sample["observation"]:
+        # print('starting robot_information')
+        if "robot_information" in sample["task"]:
             if self._add_robot_information:
-                sample["observation"]["robot_information"] = self._language_encoder(sample["observation"]["robot_information"])
+                sample["task"]["robot_information"] = self._language_encoder(sample["task"]["robot_information"])
             else:
-                del sample["observation"]["robot_information"]
+                del sample["task"]["robot_information"]
+        
+        # print('starting frequency')
+        if 'frequency' in sample['task']:
+            sample['task']['frequency'] = np.array(sample['task']['frequency'])
+        if 'dataset_index' in sample['task']:
+            sample['task']['dataset_index'] = np.array(sample['task']['dataset_index'])
 
+        # print('done')
         return sample
     
     def remap_sample(self, sample):
@@ -154,6 +163,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                         transformed_sample[value] = sample[old_key]
 
             return transformed_sample
+
 
 class TorchRLDSIterableDatasetTF(torch.utils.data.IterableDataset):
     """Thin wrapper around RLDS dataset for use with PyTorch dataloaders."""

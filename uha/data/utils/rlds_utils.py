@@ -16,6 +16,7 @@ from uha.data.utils.data_utils import (
     sample_match_keys_uniform,
 
 )
+from uha.data.utils.dataset_index import DATASET_NAME_TO_INDEX
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,38 @@ class RLDSProcessing:
             return tf.tile(robot_info, [traj_len])
         except KeyError as e:
             raise KeyError(f"Missing required robot information field: {e}")
+        
+    # make a method based on the dataset name that adds an index as a new field called dataset_index
+    # take the dataset name and get the index from from uha.data.utils.dataset_index import DATASET_NAME_TO_INDEX
+
+    @staticmethod
+    def process_dataset_index(old_obs: dict, traj_len: int, dataset_name: str) -> tf.Tensor:
+        """
+        Process dataset index data by converting dataset name to index and creating a tensor.
+        
+        Args:
+            old_obs (dict): Original observation dictionary (unused but kept for consistency)
+            traj_len (int): Length of trajectory to repeat index for
+            dataset_name (str): Name of the dataset to get index for
+            
+        Returns:
+            tf.Tensor: 1D int32 tensor of length traj_len containing the dataset index
+            
+        Raises:
+            KeyError: If dataset_name is not found in DATASET_NAME_TO_INDEX mapping
+        """
+        print('-'*50)
+        print("dataset_name", dataset_name)
+        print('-'*50)
+        try:
+            # Get dataset index and convert to tensor
+            dataset_index = DATASET_NAME_TO_INDEX[dataset_name]
+            # Create constant tensor with proper type
+            index_tensor = tf.constant(dataset_index, dtype=tf.int32)
+            # Repeat for trajectory length
+            return tf.repeat(index_tensor, repeats=[traj_len])
+        except KeyError:
+            raise KeyError(f"Dataset name '{dataset_name}' not found in index mapping")
 
     def process_frequency(old_obs: dict, traj_len: int) -> tf.Tensor:
         """Process frequency data from the trajectory.
