@@ -298,6 +298,11 @@ MO = [
     
 ]
 
+DROID = [
+    ("eef_droid", 1.0),
+]
+
+
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
     "simpler_env": SIMPLER_ENV,
@@ -328,4 +333,5 @@ OXE_NAMED_MIXES = {
     "libero_all": LIBERO_ALL,
     "simulation_all": SIMPLER_LIBERO_ALL,
     "mo": MO,
+    "droid": DROID,
 }

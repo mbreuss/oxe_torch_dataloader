@@ -10,6 +10,7 @@ from functools import partial
 import numpy as np
 import tensorflow_datasets as tfds
 import dlimp as dl
+import tqdm
 
 from uha.data.utils.spec import ModuleSpec
 from uha.data.utils.data_utils import (
@@ -188,8 +189,7 @@ class RLDSProcessing:
         task["language_instruction"] = sample_match_keys_uniform(
             traj, 
             language_key if use_gt else f"{language_key_NILS}*"
-        )
-        
+        )        
         return task, local_lang_key
 
     @staticmethod

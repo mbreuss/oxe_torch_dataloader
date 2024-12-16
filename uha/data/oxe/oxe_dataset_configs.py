@@ -106,7 +106,7 @@ OXE_DATASET_CONFIGS = {
     "droid": {
         "image_obs_keys": {
             "primary": "exterior_image_1_left", 
-            "secondary": "exterior_image_2_left", 
+            # "secondary": "exterior_image_2_left", 
             "wrist": "wrist_image_left"
         },
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},

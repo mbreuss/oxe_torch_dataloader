@@ -178,6 +178,7 @@ def main(cfg: DictConfig):
         first_batch = next(generator)
         logger.info("Successfully got first batch")
         logger.info(f"Batch keys: {first_batch.keys()}")
+        logger.info(f"Task keys: {first_batch['task'].keys()}")
         
         # Main iteration loop
         logger.info("Starting main iteration loop...")

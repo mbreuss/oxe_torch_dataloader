@@ -40,7 +40,7 @@ def add_robot_information(robot_name, action_space, number_arms):
     
     # Convert the string to a TensorFlow tensor of type tf.string
     info_tensor = tf.convert_to_tensor(info, dtype=tf.string)
-    return tf.reshape(info, [-1])
+    return tf.reshape(info_tensor, [-1])
 
 
 def get_action_space_index(robot_type, num_arms, control_mode='position', return_tensor=True):
@@ -89,7 +89,7 @@ def kit_irl_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=1
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -110,7 +110,7 @@ def kit_irl_dataset_joint_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
         ),
         axis=1
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta joint", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta joint", 1)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -131,7 +131,7 @@ def kit_irl_dataset_abs_joint_transform(trajectory: Dict[str, Any]) -> Dict[str,
         ),
         axis=1
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -153,7 +153,7 @@ def kit_irl_dataset_abs_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=1
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "absolute end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'position')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -174,8 +174,9 @@ def droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=1
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     trajectory['frequency'] = tf.constant(15, dtype=tf.int32)
+    trajectory['action_space_index'] = get_action_space_index('JOINT', 1, 'position')
     return trajectory
 
 
@@ -195,7 +196,7 @@ def eef_droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=1
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(15, dtype=tf.int32)
     return trajectory
@@ -216,7 +217,7 @@ def bridge_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
     # now move to unifed action space
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
 
     trajectory['action'] = temp_dict['action']
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
@@ -236,7 +237,7 @@ def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     trajectory = relabel_actions(trajectory)
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("Google Robot", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Google Robot", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -265,7 +266,7 @@ def rt1_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
-    trajectory["observation"]["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(3, dtype=tf.int32)
     return trajectory
@@ -305,7 +306,7 @@ def kuka_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     #    tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     #)  # delete uninformative language instruction
     trajectory["language_instruction"] = trajectory["observation"]["natural_language_instruction"]
-    trajectory["observation"]["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -333,7 +334,7 @@ def taco_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(15, dtype=tf.int32)
     return trajectory
@@ -358,7 +359,7 @@ def jaco_play_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
-    trajectory["observation"]["robot_information"] = add_robot_information("Jaco 2", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Jaco 2", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -379,7 +380,7 @@ def berkeley_cable_routing_dataset_transform(
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -406,7 +407,7 @@ def roboturk_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -432,7 +433,7 @@ def nyu_door_opening_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, 
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(3, dtype=tf.int32)
     return trajectory
@@ -462,7 +463,7 @@ def viola_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(20, dtype=tf.int32)
     return trajectory
@@ -493,7 +494,7 @@ def berkeley_autolab_ur5_dataset_transform(
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
-    trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -512,7 +513,7 @@ def toto_dataset_transform_eef(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(30, dtype=tf.int32)
     return trajectory
@@ -532,7 +533,7 @@ def toto_dataset_transform_joint(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     traj_truncated["language_instruction"] = tf.fill(
         tf.shape(traj_truncated["observation"]["natural_language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     trajectory['frequency'] = tf.constant(30, dtype=tf.int32)
     return traj_truncated
@@ -561,7 +562,7 @@ def language_table_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
     trajectory["language_instruction"] = tf.strings.split(instruction_encoded, "\x00")[
         :, :1
     ].to_tensor()[:, 0]
-    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -580,7 +581,7 @@ def pusht_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
-    trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -607,7 +608,7 @@ def stanford_kuka_multimodal_dataset_transform(
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
@@ -615,7 +616,7 @@ def stanford_kuka_multimodal_dataset_transform(
 def nyu_rot_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :7]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(20, dtype=tf.int32)
     return trajectory
@@ -641,7 +642,7 @@ def stanford_hydra_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -662,7 +663,7 @@ def austin_buds_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(20, dtype=tf.int32)
     return trajectory
@@ -687,7 +688,7 @@ def nyu_franka_play_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(3, dtype=tf.int32)
     return trajectory
@@ -715,7 +716,7 @@ def furniture_bench_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -729,7 +730,7 @@ def cmu_franka_exploration_dataset_transform(
     trajectory["observation"]["proprio"] = tf.zeros(
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -738,7 +739,7 @@ def cmu_franka_exploration_dataset_transform(
 def ucsd_kitchen_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, :7]
-    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
@@ -753,7 +754,7 @@ def ucsd_pick_place_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, A
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("xArm", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(2, dtype=tf.int32)
     return trajectory
@@ -774,7 +775,7 @@ def austin_sailor_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(20, dtype=tf.int32)
     return trajectory
@@ -795,7 +796,7 @@ def austin_sirius_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(20, dtype=tf.int32)
     return trajectory
@@ -823,7 +824,7 @@ def bc_z_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["language_instruction"] = trajectory["observation"][
         "natural_language_instruction"
     ]
-    trajectory["observation"]["robot_information"] = add_robot_information("Google Robot", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Google Robot", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -834,7 +835,7 @@ def tokyo_pr2_opening_fridge_dataset_transform(
 ) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("PR2", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("PR2", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -845,7 +846,7 @@ def tokyo_pr2_tabletop_manipulation_dataset_transform(
 ) -> Dict[str, Any]:
     trajectory["action"] = trajectory["action"][..., :-1]
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("PR2", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("PR2", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -859,7 +860,7 @@ def utokyo_xarm_bimanual_dataset_transform(
     trajectory["observation"]["proprio"] = trajectory["observation"][
         "end_effector_pose"
     ]
-    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "delta end-effector", 2)
+    trajectory["robot_information"] = add_robot_information("xArm", "delta end-effector", 2)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 2, 'position')
     return trajectory
 
@@ -880,7 +881,7 @@ def robo_net_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
             trajectory["observation"]["state"][:, -1:],
         ),
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Multi-Robot", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Multi-Robot", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(1, dtype=tf.int32)
     return trajectory
@@ -904,7 +905,7 @@ def berkeley_mvp_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
         ],
         axis=1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("xArm", "absolute joint", 1)
+    trajectory["robot_information"] = add_robot_information("xArm", "absolute joint", 1)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -935,7 +936,7 @@ def berkeley_rpt_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
         [joint_actions, invert_gripper_actions(trajectory["action"][:-1, -1:])],
         axis=1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return traj_truncated
@@ -952,7 +953,7 @@ def kaist_nonprehensible_dataset_transform(
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, -7:]
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
@@ -974,7 +975,7 @@ def stanford_mask_vit_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str,
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32) # not true they dont know 
     return trajectory
@@ -993,7 +994,7 @@ def tokyo_lsmo_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 def dlr_sara_pour_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("DLR SARA", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("DLR SARA", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -1001,7 +1002,7 @@ def dlr_sara_pour_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
 
 def dlr_sara_grid_clamp_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"][:, :6]
-    trajectory["observation"]["robot_information"] = add_robot_information("DLR SARA", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("DLR SARA", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -1019,7 +1020,7 @@ def dlr_edan_shared_control_dataset_transform(
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("DLR EDAN", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("DLR EDAN", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -1033,7 +1034,7 @@ def asu_table_top_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("UR5", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(12.5, dtype=tf.int32)
     return trajectory
@@ -1041,7 +1042,7 @@ def asu_table_top_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any
 
 def robocook_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -1053,7 +1054,7 @@ def imperial_wristcam_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str,
     trajectory["observation"]["proprio"] = tf.zeros(
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Sawyer", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -1077,7 +1078,7 @@ def iamlab_pick_insert_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(20, dtype=tf.int32)
     return trajectory
@@ -1096,7 +1097,7 @@ def uiuc_d3field_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]
     trajectory["observation"]["proprio"] = tf.zeros(
         (tf.shape(trajectory["action"])[0], 1), dtype=tf.float32
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Kinova Gen3", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Kinova Gen3", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     return trajectory
 
@@ -1116,7 +1117,7 @@ def utaustin_mutex_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
     trajectory["language_instruction"] = tf.fill(
         tf.shape(trajectory["language_instruction"]), ""
     )  # delete uninformative language instruction
-    trajectory["observation"]["robot_information"] = add_robot_information("PAMY2", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("PAMY2", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(20, dtype=tf.int32)
     return trajectory
@@ -1138,7 +1139,7 @@ def berkeley_fanuc_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, An
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Fanuc Mate", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Fanuc Mate", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -1158,7 +1159,7 @@ def cmu_playing_with_food_dataset_transform(
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -1173,7 +1174,7 @@ def playfusion_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         axis=-1,
     )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -1189,7 +1190,7 @@ def cmu_stretch_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -1241,7 +1242,7 @@ def aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     trajectory = tf.nest.map_structure(lambda x: x[::factor], trajectory)
 
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
+    trajectory["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 2, 'position')
     trajectory['frequency'] = tf.constant(50, dtype=tf.int32)
     return trajectory
@@ -1256,7 +1257,7 @@ def fmb_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
@@ -1265,7 +1266,7 @@ def fmb_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 def dobbe_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # every input feature is batched, ie has leading batch dimension
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["observation"]["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(4, dtype=tf.int32)
     return trajectory
@@ -1287,7 +1288,7 @@ def roboset_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -1308,7 +1309,7 @@ def rh20t_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     trajectory["action"] = tf.concat(
@@ -1336,7 +1337,7 @@ def libero_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     trajectory["observation"]["EEF_state"] = trajectory["observation"]["state"][:, :6]
     trajectory["observation"]["gripper_state"] = trajectory["observation"]["state"][:, -2:]  # 2D gripper state
-    trajectory["observation"]["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("Franka", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory

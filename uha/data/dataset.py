@@ -373,7 +373,8 @@ def make_dataset_from_rlds(
         RLDSProcessing.add_language_metadata(task, local_lang_key, traj_len, language_key)
         
         # Process robot information
-        task['robot_information'] = RLDSProcessing.process_robot_information(traj["observation"], traj_len)
+        print(traj.keys())
+        task['robot_information'] = RLDSProcessing.process_robot_information(traj, traj_len)
         task['dataset_index'] = RLDSProcessing.process_dataset_index(traj, traj_len, name)
         # Process action space index
         try:
@@ -398,6 +399,10 @@ def make_dataset_from_rlds(
             # Optionally provide a default value if processing fails
             task['frequency'] = tf.repeat(1, traj_len)  # Default to 1Hz if processing fails
 
+        # debug
+        print('after processing')
+        print(task.keys())
+        print('--'*20)
         return {
             "observation": new_obs,
             "task": task,
