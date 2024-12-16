@@ -36,7 +36,7 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
         self._add_robot_information = transform_dict["add_robot_information"] if transform_dict is not None and "add_robot_information" in transform_dict else False
 
     def __iter__(self):
-        for sample in self._rlds_dataset.iterator(prefetch=2048): # batchsize
+        for sample in self._rlds_dataset.iterator(prefetch=256): # batchsize
         # for sample in self._rlds_dataset.as_numpy_iterator():
             if self._is_single_dataset: # yield only 1 element of trajectorie
                 self._current_length = sample["action"].shape[0]
@@ -77,7 +77,6 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             return sub_batch
 
     def transform_sample(self, sample):
-        
         dicts = ["observation", "task", "future_obs"]
         if self._move_axis:
             for key in dicts:
@@ -95,40 +94,28 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
             sample["action"] = sample["action"].astype(dtype)
 
         if self._bytes_to_string:
-            # if self._is_single_dataset:
-                # if sample["task"]["pad_mask_dict"]["language_instruction"][0][0]:
-                #     sample["task"]["language_instruction"] = sample["task"]["language_instruction"][0][0].decode("utf-8")
-                #     sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
-                # else:
-                #     sample["task"]["language_instruction"] = self._language_encoder("")
-                # sample["task"]["language_instruction"] = self._vectorized_lang_encoder(sample["task"]["language_instruction"])
+            # Handle language instruction
+            if sample["task"]["pad_mask_dict"]["language_instruction"]:
+                sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
+                sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
+            else:
+                sample["task"]["language_instruction"] = self._language_encoder("")
 
-                # sample["task"]["language_instruction"] = self._language_encoder(
-                #     [s.decode("utf-8") for s in sample["task"]["language_instruction"]]
-                # )
-                    
-            # else:
-                # print(sample["task"]["language_instruction"])
-                if sample["task"]["pad_mask_dict"]["language_instruction"]:
-                    sample["task"]["language_instruction"] = sample["task"]["language_instruction"].decode("utf-8")
-                    sample["task"]["language_instruction"] = self._language_encoder(sample["task"]["language_instruction"])
-                else:
-                    sample["task"]["language_instruction"] = self._language_encoder("")
-
-        # print('starting robot_information')
-        if "robot_information" in sample["task"]:
-            if self._add_robot_information:
+            # Handle robot information in the same way
+            if sample["task"]["pad_mask_dict"]["robot_information"]:
+                sample["task"]["robot_information"] = sample["task"]["robot_information"].decode("utf-8")
                 sample["task"]["robot_information"] = self._language_encoder(sample["task"]["robot_information"])
             else:
-                del sample["task"]["robot_information"]
-        
-        # print('starting frequency')
+                sample["task"]["robot_information"] = self._language_encoder("")
+
+        # Process array types
         if 'frequency' in sample['task']:
             sample['task']['frequency'] = np.array(sample['task']['frequency'])
         if 'dataset_index' in sample['task']:
             sample['task']['dataset_index'] = np.array(sample['task']['dataset_index'])
+        if 'action_space_index' in sample['task']:
+            sample['task']['action_space_index'] = np.array(sample['task']['action_space_index'])
 
-        # print('done')
         return sample
     
     def remap_sample(self, sample):

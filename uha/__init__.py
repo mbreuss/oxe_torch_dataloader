@@ -12,32 +12,42 @@ import dlimp as dl
 
 tf.config.set_visible_devices([], "GPU")
 
-def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, language_encoder: nn.Module = None, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False, is_single_dataset=False, main_process=False):
+def make_pytorch_oxe_iterable_dataset(dataset: dl.DLataset, 
+                                    train=True, 
+                                    batch_size=512,
+                                    transform_dict=None,
+                                    language_encoder=None,
+                                    num_workers=0,
+                                    pin_memory=True,
+                                    drop_last=False,
+                                    is_single_dataset=False,
+                                    main_process=False):
     if language_encoder is not None:
-        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, language_encoder=language_encoder, is_single_dataset=is_single_dataset)
+        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, 
+                                                 language_encoder=language_encoder,
+                                                 is_single_dataset=is_single_dataset)
     else:
-        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict, is_single_dataset=is_single_dataset)
+        torch_itarable = TorchRLDSIterableDataset(dataset, train, transform_dict,
+                                                 is_single_dataset=is_single_dataset)
 
-    if main_process:
-        return DataLoader(
-            torch_itarable,
-            batch_size=batch_size,
-            num_workers=1, # 1/2 for prefetching, dont increase beyond 2, else we get ddos timeout from gsresearch (1 for HoreKa)
-            pin_memory=pin_memory,
-            drop_last=drop_last,
-            prefetch_factor=8,
-            shuffle=False if is_single_dataset else None,
-        )
+    dataloader_kwargs = {
+        'batch_size': batch_size,
+        'pin_memory': pin_memory,
+        'drop_last': drop_last,
+        'shuffle': False if is_single_dataset else None,
+    }
+
+    if main_process and num_workers > 0:
+        # Only add multiprocessing settings if workers > 0
+        dataloader_kwargs.update({
+            'num_workers': num_workers,
+            'prefetch_factor': 2,
+            'persistent_workers': True,
+        })
     else:
-        return DataLoader(
-            torch_itarable,
-            batch_size=batch_size,
-            num_workers=0, # important to keep this to 0 so PyTorch does not mess with the parallelism
-            pin_memory=pin_memory,
-            drop_last=drop_last,
-            shuffle=False if is_single_dataset else None,
-        )
-    
+        dataloader_kwargs['num_workers'] = 0
+
+    return DataLoader(torch_itarable, **dataloader_kwargs)
     
 def multi_worker_iterable_dataset(dataset: dl.DLataset, language_encoder: nn.Module = None, train=True, batch_size=512, transform_dict=None, num_workers=0, pin_memory=False, drop_last=False, is_single_dataset=False, main_process=False):
     if language_encoder is not None:
