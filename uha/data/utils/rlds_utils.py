@@ -99,42 +99,21 @@ class RLDSProcessing:
         except KeyError:
             raise KeyError(f"Dataset name '{dataset_name}' not found in index mapping")
 
+    '''@staticmethod
     def process_frequency(old_obs: dict, traj_len: int) -> tf.Tensor:
-        """Process frequency data from the trajectory.
-        
-        Args:
-            old_obs: Original observation dictionary
-            traj_len: Length of the trajectory
-            
-        Returns:
-            tf.Tensor: Tiled frequency tensor matching trajectory length
-            
-        Raises:
-            KeyError: If frequency field is missing
-            ValueError: If frequency is not the expected type or shape
-        """
         try:
-            # Get frequency value
-            frequency = old_obs['frequency']
-            
-            # Type and shape validation
-            tf.debugging.assert_type(
-                frequency, 
-                tf.int32,
-                message="frequency must be int32 tensor"
-            )
-            tf.debugging.assert_scalar(
-                frequency,
-                message="frequency must be a scalar value"
+            # Ensure frequency is a scalar tensor with default of 10
+            frequency = tf.cast(
+                old_obs.get('frequency', tf.constant(10, dtype=tf.int32)), 
+                tf.int32
             )
             
-            # Tile frequency to match trajectory length
-            return tf.repeat(frequency, traj_len)
-            
-        except KeyError as e:
-            raise KeyError(f"Missing required frequency field: {e}")
+            # Ensure it's a scalar and tile to trajectory length
+            frequency = tf.broadcast_to(frequency, [traj_len])
+            return frequency
         except Exception as e:
-            raise ValueError(f"Error processing frequency: {e}")
+            logging.warning(f"Error processing frequency: {e}")
+            return tf.fill([traj_len], tf.constant(10, dtype=tf.int32))'''
 
     @staticmethod
     def determine_language_key(

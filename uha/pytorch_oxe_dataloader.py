@@ -10,6 +10,7 @@ from uha.data.utils.data_utils import hydra_get_object
 from uha.data.language_encoders.no_encoder import NoEncoder
 from dlimp.dataset import DLataset
 
+from uha.data.utils.frequency_mapping  import DATASET_FREQUENCY_MAP
 
 class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
     """Thin wrapper around RLDS dataset for use with PyTorch dataloaders."""
@@ -109,12 +110,18 @@ class TorchRLDSIterableDataset(torch.utils.data.IterableDataset):
                 sample["task"]["robot_information"] = self._language_encoder("")
 
         # Process array types
-        if 'frequency' in sample['task']:
-            sample['task']['frequency'] = np.array(sample['task']['frequency'])
+        # if 'frequency' in sample['task']:
+        #    sample['task']['frequency'] = np.array(sample['task']['frequency'])
         if 'dataset_index' in sample['task']:
             sample['task']['dataset_index'] = np.array(sample['task']['dataset_index'])
         if 'action_space_index' in sample['task']:
             sample['task']['action_space_index'] = np.array(sample['task']['action_space_index'])
+
+        # now add frequency information
+        if "dataset_index" in sample:
+            sample["task"]["frequency"] = np.array([DATASET_FREQUENCY_MAP[sample["dataset_index"]]])
+        else:
+            sample["task"]["frequency"] = np.array([10])
 
         return sample
     

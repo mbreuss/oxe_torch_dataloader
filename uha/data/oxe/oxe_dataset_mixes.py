@@ -302,6 +302,22 @@ DROID = [
     ("eef_droid", 1.0),
 ]
 
+TRINITY = [
+    ("eef_droid", 1.0),
+    ("bridge_dataset", 6.0),
+    ("fractal20220817_data", 3.0),
+]
+
+ACTION_MIXED = [
+    ("droid", 1.0),
+    ("bridge_dataset", 1.0),
+    ("fractal20220817_data", 1.0),
+    ("aloha_static_dataset", 3.0),
+    ("aloha_mobile", 2.0),
+    ("dobbe", 1.0),
+    ("robo_set", 1.0),
+]
+
 
 OXE_NAMED_MIXES = {
     "fraktal": FRAKTAL_MIX,
@@ -334,4 +350,6 @@ OXE_NAMED_MIXES = {
     "simulation_all": SIMPLER_LIBERO_ALL,
     "mo": MO,
     "droid": DROID,
+    "trinity": TRINITY,
+    "action_mixed": ACTION_MIXED,
 }

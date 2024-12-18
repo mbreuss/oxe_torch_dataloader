@@ -189,6 +189,8 @@ def main(cfg: DictConfig):
                 # Log GPU memory usage during iteration
                 if torch.cuda.is_available():
                     logger.info(f"GPU memory allocated: {torch.cuda.memory_allocated(0) / 1024**2:.2f} MB")
+
+        print("Finished main iteration loop")
                 
     except Exception as e:
         logger.error(f"Fatal error in main: {e}")

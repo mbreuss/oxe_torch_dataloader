@@ -384,24 +384,15 @@ def make_dataset_from_rlds(
             )
         except Exception as e:
             logger.warning(f"Failed to process action_space_index: {e}")
-        try:
+        '''try:
             frequency = RLDSProcessing.process_frequency(traj, traj_len)
             task['frequency'] = frequency
-            print(f'Frequency: {frequency}')
-            # Validate shape matches
-            tf.debugging.assert_equal(
-                tf.shape(frequency)[0],
-                traj_len,
-                message="frequency shape should match trajectory length"
-            )
         except Exception as e:
-            logger.warning(f"Failed to process frequency: {e}")
-            # Optionally provide a default value if processing fails
-            task['frequency'] = tf.repeat(1, traj_len)  # Default to 1Hz if processing fails
+            logging.warning(f"Fallback frequency processing: {e}")
+            task['frequency'] = tf.fill([traj_len], tf.constant(10, dtype=tf.int32))'''
 
         # debug
         print('after processing')
-        print(task.keys())
         print('--'*20)
         return {
             "observation": new_obs,

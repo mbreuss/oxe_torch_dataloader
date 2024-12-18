@@ -87,6 +87,8 @@ def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool):
     else:
         assert cfg.action_proprio_normalization_type == "normal" or cfg.action_proprio_normalization_type == "bounds", "Error in Config, action_proprio_normalization_type should be \"normal\" or \"bounds\""
         action_proprio_normalization_type = NormalizationType(cfg.action_proprio_normalization_type)
+
+    print("constructing dataset inside get_octo_dataset_tensorflow")
     dataset_kwargs_list, sample_weights = make_oxe_dataset_kwargs_and_weights(
         cfg.DATA_NAME,
         cfg.DATA_PATH,
@@ -94,20 +96,20 @@ def get_octo_dataset_tensorflow(cfg: DictConfig, train: bool):
         load_camera_views=cfg.load_camera_views,
         dataset_size_limit=cfg.dataset_size_limit if "dataset_size_limit" in cfg else None,
     )
-
+    
+    print("finished constructing dataset inside get_octo_dataset_tensorflow")
     if not train:
         cfg.interleaved_dataset_cfg.shuffle_buffer_size = int(cfg.interleaved_dataset_cfg.shuffle_buffer_size / 100)
-
     # create instance of interleaved_dataset_cfg for transforms to work
     interleaved_dataset_cfg = OmegaConf.to_object(cfg.interleaved_dataset_cfg)
-
+    print("starting to make dataset interleaved")
     dataset = make_interleaved_dataset(
         dataset_kwargs_list,
         sample_weights,
         train=train,
         **interleaved_dataset_cfg,
     )
-
+    print("finished constructing dataset inside get_octo_dataset_tensorflow")
     return dataset
 
 def get_single_dataset_tensorflow(cfg: DictConfig, train: bool):
