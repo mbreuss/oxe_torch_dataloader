@@ -2,6 +2,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenize
 import torch
 import torch.nn as nn
 import numpy as np
+import tensorflow as tf
 
 class EmbedVLM(nn.Module):
     def __init__(self,
@@ -46,18 +47,26 @@ class TokenVLM(nn.Module):
         
 
     def forward(self, batch_text):
-        # print('start tokenizing')
+        # print('start tokenizing'
+        # print("inside toenizer")
+        # print(batch_text.shape)
+       #  batch_text = [str(text.numpy()) if isinstance(text, tf.Tensor) else text for text in batch_text]
+
         batch_text_ids = self.tokenizer(
             batch_text, 
             return_tensors='pt',
-            padding='max_length',
+            padding="max_length",
             truncation=True,
-            max_length=77,
+            max_length=150,
             return_attention_mask=True
         )
+        # decoded = self.tokenizer.batch_decode(batch_text_ids["input_ids"], skip_special_tokens=True)
+        # print("Original text:", batch_text)
+        # print("Decoded text:", decoded)
         # print('end tokenizing')
         # Remove extra dimension to match expected format
         batch_text_ids.data["input_ids"] = batch_text_ids.data["input_ids"].squeeze(1)
         batch_text_ids.data["attention_mask"] = batch_text_ids.data["attention_mask"].squeeze(1)
+        # print(batch_text_ids.data["input_ids"].shape)
         # print('returning tokenized text')
         return batch_text_ids

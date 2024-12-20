@@ -303,9 +303,14 @@ DROID = [
 ]
 
 TRINITY = [
-    ("eef_droid", 1.0),
-    ("bridge_dataset", 6.0),
-    ("fractal20220817_data", 3.0),
+    # ("eef_droid", 1.0),
+    # ("bridge_dataset", 6.0),
+    # ("fractal20220817_data", 3.0),
+    # ("dobbe", 6.0),
+    # ("robo_set", 6.0),
+    ("aloha_play_dataset", 1.0),
+    # ("aloha_mobile", 1.0),
+    # ("kit_irl_real_kitchen_lang", 10.0),
 ]
 
 ACTION_MIXED = [

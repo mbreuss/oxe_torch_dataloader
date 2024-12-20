@@ -87,7 +87,7 @@ OXE_DATASET_CONFIGS = {
         # "shuffle": False,
     },
     "kit_irl_real_kitchen_lang": {
-        "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": "wrist_image"},
+        "image_obs_keys": {"primary": "image_top", "secondary": "image_side", "wrist": None},
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT,
         "action_encoding": ActionEncoding.JOINT_POS,
@@ -106,7 +106,7 @@ OXE_DATASET_CONFIGS = {
     "droid": {
         "image_obs_keys": {
             "primary": "exterior_image_1_left", 
-            # "secondary": "exterior_image_2_left", 
+            "secondary": None, 
             "wrist": "wrist_image_left"
         },
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
@@ -119,7 +119,8 @@ OXE_DATASET_CONFIGS = {
     "eef_droid": {
         "image_obs_keys": {
             "primary": "exterior_image_1_left", 
-            "secondary": "exterior_image_2_left", 
+            # "secondary": "exterior_image_2_left", 
+            "secondary": None,
             "wrist": "wrist_image_left"
         },
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
@@ -563,7 +564,7 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.JOINT_BIMANUAL,
         "action_encoding": ActionEncoding.JOINT_POS_BIMANUAL_NAV,
-        "data_dir": "~/tensorflow_datasets",
+        # "data_dir": "~/tensorflow_datasets",
         # "data_dir": "/hkfs/work/workspace/scratch/unesl-datasets",
     },
     "fmb_dataset": {
@@ -616,6 +617,17 @@ OXE_DATASET_CONFIGS = {
         "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
         "proprio_encoding": ProprioEncoding.POS_EULER,
         "action_encoding": ActionEncoding.EEF_POS,
+    },
+    "aloha_play_dataset": {
+        "image_obs_keys": {
+            "primary": "cam_high",
+            "secondary": "cam_low",
+            "wrist": "cam_right_wrist",
+        },
+        "depth_obs_keys": {"primary": None, "secondary": None, "wrist": None},
+        "proprio_encoding": ProprioEncoding.JOINT_BIMANUAL,
+        "action_encoding": ActionEncoding.JOINT_POS_BIMANUAL,
+        "data_dir": "/home/reuss/.cache/huggingface/hub/datasets--oier-mees--BiPlay/snapshots/6af6c5ca72bbe40b0a3db80adca041b6adf526c1/BiPlay", # aloha_play_dataset/1.0.0
     },
     ### LIBERO datasets (modified versions)
     "libero_spatial_no_noops": {

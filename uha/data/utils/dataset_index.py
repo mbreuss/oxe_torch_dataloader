@@ -67,7 +67,8 @@ DATASET_INDEX_MAPPING = {
     65: "libero_spatial_no_noops",
     66: "libero_object_no_noops",
     67: "libero_goal_no_noops",
-    68: "libero_10_no_noops"
+    68: "libero_10_no_noops",
+    69: "aloha_play_dataset",
 }
 
 # Reverse mapping for convenience if needed

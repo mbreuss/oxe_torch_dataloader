@@ -23,6 +23,162 @@ from uha.data.utils.data_utils import (
     relabel_actions,
 )
 
+def clean_instruction(input_str):
+   input_str = str(input_str)
+   input_str = input_str.split("tf.Tensor(b'")[-1].split("'")[0]
+   return input_str
+
+import tensorflow as tf
+
+def format_instruction(
+    instruction: tf.Tensor,
+    robot_name: str,
+    number_arms: str,
+    action_space: str,
+    prompt_style: str = "combined"
+) -> tf.Tensor:
+    """
+    Wrapper to convert TF tensor instructions into formatted Florence prompts.
+
+    Args:
+        instruction (tf.Tensor): Tensor of instructions to format.
+        robot_name (str): Name of the robot.
+        number_arms (str): Number of robot arms.
+        action_space (str): Action space type.
+        prompt_style (str): Style of the prompt. Default is "combined".
+
+    Returns:
+        tf.Tensor: Tensor of formatted instructions.
+    """
+
+    def format_single_instruction(instr):
+        # Decode the input tensor into a UTF-8 string
+        if tf.is_tensor(instr):
+            instr_str = tf.strings.as_string(instr) if instr.dtype != tf.string else instr
+        else:
+            instr_str = tf.convert_to_tensor(str(instr), dtype=tf.string)
+
+        # Apply formatting using generate_policy_prompt
+        def format_python_string(x):
+            # Decode the instruction string
+            decoded_instr = x.decode("utf-8") if isinstance(x, bytes) else str(x)
+            # print(decoded_instr)
+            # Format the prompt
+            formatted_prompt = generate_policy_prompt(
+                instruction=clean_instruction(decoded_instr),
+                robot_name=robot_name,
+                num_arms=int(number_arms),
+                action_space=action_space,
+                prompt_style=prompt_style
+            )
+            
+            # Replace the tf.Tensor wrapper with the decoded instruction
+            formatted_prompt = formatted_prompt.replace(
+                f"Task Instruction: {x}",
+                f"Task Instruction: {decoded_instr}"
+            )
+            
+            return formatted_prompt
+
+        # Use tf.py_function to apply the formatting function
+        formatted = tf.py_function(
+            func=format_python_string,
+            inp=[instr_str],
+            Tout=tf.string
+        )
+
+        return formatted
+
+    # Map the formatting function to all elements in the instruction tensor
+    return tf.map_fn(
+        format_single_instruction,
+        instruction,
+        dtype=tf.string
+    )
+
+
+
+def generate_policy_prompt(
+    instruction: str,
+    robot_name: str = "UR5",
+    num_arms: int = 1,
+    action_space: str = "7D continuous",
+    prompt_style: str = "combined",
+    include_meta: bool = True
+) -> str:
+    """
+    Generate structured prompts for VLA policy training.
+    
+    Args:
+        instruction: Task instruction text
+        robot_name: Name of the robot
+        num_arms: Number of robot arms
+        action_space: Description of action space
+        prompt_style: Prompt generation strategy ("combined", "structured", "visual", "minimal")
+        include_meta: Whether to include metadata tags
+    
+    Returns:
+        Formatted prompt string
+    """
+    if isinstance(instruction, tf.Tensor):
+        try:
+            instruction = instruction.numpy().decode("utf-8")
+        except AttributeError:
+            raise ValueError(
+                "The provided 'instruction' is a symbolic TensorFlow tensor. Ensure it is resolved to a string before passing."
+            )
+    # Base metadata string
+    meta_info = f"Agent Type: {num_arms}-arm {robot_name}, Action Space: {action_space}, "
+    
+    prompts = {
+        # Combines structured info with visual grounding
+        "combined": f"""
+            {meta_info if include_meta else ''}
+            </od>Task Instruction: {instruction}</od><grounding>identify objects and spatial relationships for robotic manipulation</grounding>
+        """,
+        
+        # Focuses on visual and spatial features
+        "visual": f"""
+            <od>Task Instruction: {instruction}, </od>
+            <grounding>identify key objects and their spatial relationships</grounding>
+            <region_cap>analyze motion paths and collision-free trajectories</region_cap>
+            <dense_region_caption>determine optimal grasp points and manipulation targets</dense_region_caption>
+            {f'<cap>{meta_info}</cap>' if include_meta else ''}
+        """,
+        
+        # Structured format with clear sections
+        "structured": f"""
+            <od>ROBOT CONFIGURATION:
+            {meta_info if include_meta else ''}
+            
+            TASK OBJECTIVE:
+            {instruction}
+            
+            ANALYSIS REQUIREMENTS:
+            - Identify target objects and obstacles
+            - Determine spatial relationships
+            - Plan manipulation sequence</od>
+        """,
+        
+        # Minimal prompt for simpler tasks
+        "minimal": f"""
+            <od>{instruction}</od>
+            <grounding>analyze for robotic manipulation</grounding>
+            {f'<cap>{meta_info}</cap>' if include_meta else ''}
+        """
+    }
+    
+    if prompt_style not in prompts:
+        raise ValueError(f"Invalid prompt style: {prompt_style}. Choose from: {list(prompts.keys())}")
+    
+    # Clean up whitespace and formatting
+    prompt = prompts[prompt_style].strip()
+    prompt = ' '.join(line.strip() for line in prompt.split('\n'))
+    return prompt
+
+
+
+
 '''def add_robot_information(robot_name, action_space, number_arms):
     if(number_arms > 1):
         return "A {robot_name} robot with {number_arms} arms controlled by {action_space} actions".format(robot_name=robot_name, number_arms=number_arms, action_space=action_space)
@@ -58,6 +214,8 @@ def get_action_space_index(robot_type, num_arms, control_mode='position', return
         ('JOINT_POS', 'position', 2): 5,  # joint-2-arm pos (unified for bimanual or regular)
         ('JOINT_POS_BIMANUAL_NAV', 'position', 2): 6,  # joint-2-arm pos with navigation
         ('JOINT_POS_BIMANUAL', 'position', 2): 7,  # joint-2-arm pos (unified for bimanual or regular)
+        ('JOINT_POS_NAV', 'position', 1): 8,  # joint-1-arm pos with navigation 
+        ('EEF_POS_NAV', 'velocity', 1): 0,  # end-effector delta-2-arm
     }
     
     # Get the index from the mapping
@@ -133,6 +291,14 @@ def kit_irl_dataset_abs_joint_transform(trajectory: Dict[str, Any]) -> Dict[str,
     )
     trajectory["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
+
+    trajectory["language_instruction"] = format_instruction(
+        trajectory["language_instruction"],
+        robot_name="Franka Panda",
+        action_space="joint position",
+        number_arms="1",
+        prompt_style='combined'
+    )
     # trajectory['frequency'] = tf.constant(10, dtype=tf.int32)
     return trajectory
 
@@ -167,6 +333,27 @@ def droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ],
         axis=-1,
     )
+    trajectory['language_instruction'] = format_instruction(
+        trajectory['language_instruction'],
+        "Franka",
+        "1",
+        "joint position",
+        prompt_style="combined"
+    )
+    trajectory["language_instruction_2"] = format_instruction(
+        trajectory['language_instruction_2'],
+        "Franka Panda",
+        "1",
+        "joint position",
+        prompt_style="combined"
+    )
+    trajectory["language_instruction_3"] = format_instruction(
+        trajectory['language_instruction_3'],
+        "Franka Panda",
+        "1",
+        "joint position",
+        prompt_style="combined"
+    )
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["joint_position"][:, :],
@@ -188,7 +375,27 @@ def eef_droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ],
         axis=1,
     )
-    
+    trajectory['language_instruction'] = format_instruction(
+        trajectory['language_instruction'],
+        "Franka",
+        "1",
+        "Delta End-Effector",
+        prompt_style="combined"
+    )
+    trajectory["language_instruction_2"] = format_instruction(
+        trajectory['language_instruction_2'],
+        "Franka Panda",
+        "1",
+        "Delta End-Effector",
+        prompt_style="combined"
+    )
+    trajectory["language_instruction_3"] = format_instruction(
+        trajectory['language_instruction_3'],
+        "Franka Panda",
+        "1",
+        "Delta End-Effector",
+        prompt_style="combined"
+    )
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["cartesian_position"][:, :6],
@@ -235,9 +442,16 @@ def bridge_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ],
         axis=-1,
     )
+    trajectory["language_instruction"] = format_instruction(
+        trajectory['language_instruction'],
+        "WindowX",
+        "1",
+        "Delta End-Effector",
+        prompt_style="combined"
+    )
     trajectory = relabel_actions(trajectory)
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
-    trajectory["robot_information"] = add_robot_information("Google Robot", "delta end-effector", 1)
+    trajectory["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     # trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
@@ -256,6 +470,19 @@ def rt1_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
+    # trajectory["language_instruction"] = ""
+    # iterate overa ll dicts in trajectory and print all keys
+    trajectory["language_instruction"] = trajectory["observation"][
+        "natural_language_instruction"
+    ]
+    # print(trajectory["observation"].keys())
+    trajectory["language_instruction"] = format_instruction(
+        trajectory["observation"]["natural_language_instruction"],
+        "XARM",
+        "1", 
+        "Delta End-Effector",
+        prompt_style="combined"
+    )
     trajectory["observation"]["proprio"] = tf.concat(
         (
             trajectory["observation"]["base_pose_tool_reached"],
@@ -263,9 +490,6 @@ def rt1_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
         ),
         axis=-1,
     )
-    trajectory["language_instruction"] = trajectory["observation"][
-        "natural_language_instruction"
-    ]
     trajectory["robot_information"] = add_robot_information("WindowX", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     # trajectory['frequency'] = tf.constant(3, dtype=tf.int32)
@@ -305,7 +529,14 @@ def kuka_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # trajectory["language_instruction"] = tf.fill(
     #    tf.shape(trajectory["observation"]["natural_language_instruction"]), ""
     #)  # delete uninformative language instruction
-    trajectory["language_instruction"] = trajectory["observation"]["natural_language_instruction"]
+    # trajectory["language_instruction"] = trajectory["observation"]["natural_language_instruction"]
+    trajectory["language_instruction"] = format_instruction(
+        trajectory["observation"]["natural_language_instruction"],
+        "XARM",
+        "1",
+        "Delta End-Effector",
+        prompt_style="combined"
+    )
     trajectory["robot_information"] = add_robot_information("Kuka iiwa", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
     # trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
@@ -1240,10 +1471,19 @@ def aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # relabel actions to convert from 50Hz to 10Hz
     factor = 5
     trajectory = tf.nest.map_structure(lambda x: x[::factor], trajectory)
-
+    print(trajectory.keys())
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 2, 'position')
+
+    # reprhase lang instruction 
+    trajectory["language_instruction"] = format_instruction(
+        trajectory["global_instruction"],
+        robot_name="ViperX",
+        action_space="joint position",
+        number_arms="2",
+        prompt_style='combined'
+    )
     # trajectory['frequency'] = tf.constant(50, dtype=tf.int32)
     return trajectory
 
@@ -1265,6 +1505,13 @@ def fmb_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
 
 def dobbe_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # every input feature is batched, ie has leading batch dimension
+    trajectory['language_instruction'] = format_instruction(
+        trajectory['language_instruction'],
+        robot_name="Hello Stretch",
+        action_space="delta end-effector",
+        number_arms=1,
+        prompt_style='combined'
+    )
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["robot_information"] = add_robot_information("Hello Stretch", "delta end-effector", 1)
     trajectory['action_space_index'] = get_action_space_index('EEF_POS', 1, 'velocity')
@@ -1290,6 +1537,16 @@ def roboset_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     trajectory["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
+
+    # reprhase lang instruction 
+    trajectory["language_instruction"] = format_instruction(
+        trajectory["language_instruction"],
+        robot_name="Franka Panda",
+        action_space="joint position",
+        number_arms="1",
+        prompt_style='combined'
+    )
+
     # trajectory['frequency'] = tf.constant(5, dtype=tf.int32)
     return trajectory
 
@@ -1412,4 +1669,5 @@ OXE_STANDARDIZATION_TRANSFORMS = {
     "libero_object_no_noops": libero_dataset_transform,
     "libero_goal_no_noops": libero_dataset_transform,
     "libero_10_no_noops": libero_dataset_transform,
+    "aloha_play_dataset": aloha_dataset_transform,
 }
