@@ -206,16 +206,15 @@ def get_action_space_index(robot_type, num_arms, control_mode='position', return
 
     # Mapping of (robot_type, control_mode, num_arms) to indices
     action_space_mapping = {
-        ('EEF_POS', 'position', 1): 0,  # end-effector pos-1-arm pos
-        ('EEF_POS', 'velocity', 1): 1,  # end-effector delta-1-arm
-        ('JOINT_POS', 'position', 1): 2,  # joint-1-arm pos
-        ('EEF_POS', 'position', 2): 3,  # end-effector pos-2-arm pos
-        ('EEF_POS', 'velocity', 2): 4,  # end-effector delta-2-arm
-        ('JOINT_POS', 'position', 2): 5,  # joint-2-arm pos (unified for bimanual or regular)
-        ('JOINT_POS_BIMANUAL_NAV', 'position', 2): 6,  # joint-2-arm pos with navigation
-        ('JOINT_POS_BIMANUAL', 'position', 2): 7,  # joint-2-arm pos (unified for bimanual or regular)
-        ('JOINT_POS_NAV', 'position', 1): 8,  # joint-1-arm pos with navigation 
-        ('EEF_POS_NAV', 'velocity', 1): 0,  # end-effector delta-2-arm
+        ('JOINT_POS', 'position', 1): 0,  # end-effector pos-1-arm pos
+        # ('EEF_POS', 'velocity', 1): 1,  # end-effector delta-1-arm
+        # ('JOINT_POS', 'position', 1): 2,  # joint-1-arm pos
+        # ('EEF_POS', 'position', 2): 3,  # end-effector pos-2-arm pos
+        ('EEF_POS', 'velocity', 1): 1,  # end-effector delta-2-arm
+        ('JOINT_POS_BIMANUAL_NAV', 'position', 2): 2,  # joint-2-arm pos with navigation
+        ('JOINT_POS_BIMANUAL', 'position', 2): 2,  # joint-2-arm pos (unified for bimanual or regular)
+        ('JOINT_POS_NAV', 'position', 1): 0,  # joint-1-arm pos with navigation 
+        ('EEF_POS_NAV', 'velocity', 1): 1,  # end-effector delta-2-arm
     }
     
     # Get the index from the mapping
@@ -363,7 +362,7 @@ def droid_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     trajectory["robot_information"] = add_robot_information("Franka", "absolute joint", 1)
     # trajectory['frequency'] = tf.constant(15, dtype=tf.int32)
-    trajectory['action_space_index'] = get_action_space_index('JOINT', 1, 'position')
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 1, 'position')
     return trajectory
 
 
@@ -1474,7 +1473,48 @@ def aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     print(trajectory.keys())
     trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
     trajectory["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
-    trajectory['action_space_index'] = get_action_space_index('JOINT_POS', 2, 'position')
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS_BIMANUAL', 2, 'position')
+
+    # reprhase lang instruction 
+    trajectory["language_instruction"] = format_instruction(
+        trajectory["language_instruction"],
+        robot_name="ViperX",
+        action_space="joint position",
+        number_arms="2",
+        prompt_style='combined'
+    )
+    # trajectory['frequency'] = tf.constant(50, dtype=tf.int32)
+    return trajectory
+
+
+def mobile_aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    # relabel actions to convert from 50Hz to 10Hz
+    factor = 5
+    trajectory = tf.nest.map_structure(lambda x: x[::factor], trajectory)
+    print(trajectory.keys())
+    trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS_BIMANUAL_NAV', 2, 'position')
+
+    # reprhase lang instruction 
+    trajectory["language_instruction"] = format_instruction(
+        trajectory["language_instruction"],
+        robot_name="ViperX",
+        action_space="joint position",
+        number_arms="2",
+        prompt_style='combined'
+    )
+    # trajectory['frequency'] = tf.constant(50, dtype=tf.int32)
+    return trajectory
+
+
+def aloha_play_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
+    # relabel actions to convert from 50Hz to 10Hz
+    factor = 5
+    trajectory = tf.nest.map_structure(lambda x: x[::factor], trajectory)
+    trajectory["observation"]["proprio"] = trajectory["observation"]["state"]
+    trajectory["robot_information"] = add_robot_information("ViperX", "absolute joint", 2)
+    trajectory['action_space_index'] = get_action_space_index('JOINT_POS_BIMANUAL', 2, 'position')
 
     # reprhase lang instruction 
     trajectory["language_instruction"] = format_instruction(
@@ -1486,7 +1526,6 @@ def aloha_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     )
     # trajectory['frequency'] = tf.constant(50, dtype=tf.int32)
     return trajectory
-
 
 def fmb_dataset_transform(trajectory: Dict[str, Any]) -> Dict[str, Any]:
     # every input feature is batched, ie has leading batch dimension
@@ -1659,7 +1698,7 @@ OXE_STANDARDIZATION_TRANSFORMS = {
     "gnm_dataset": gnm_dataset_transform,
     "aloha_static_dataset": aloha_dataset_transform,
     "aloha_dagger_dataset": aloha_dataset_transform,
-    "aloha_mobile": aloha_dataset_transform,
+    "aloha_mobile": mobile_aloha_dataset_transform,
     "fmb_dataset": fmb_dataset_transform,
     "dobbe": dobbe_dataset_transform,
     "robo_set": roboset_dataset_transform,
@@ -1669,5 +1708,5 @@ OXE_STANDARDIZATION_TRANSFORMS = {
     "libero_object_no_noops": libero_dataset_transform,
     "libero_goal_no_noops": libero_dataset_transform,
     "libero_10_no_noops": libero_dataset_transform,
-    "aloha_play_dataset": aloha_dataset_transform,
+    "aloha_play_dataset": aloha_play_dataset_transform,
 }

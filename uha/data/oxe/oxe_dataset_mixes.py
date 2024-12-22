@@ -295,7 +295,6 @@ MO = [
     ("libero_10_no_noops", 2.0),
     ("bridge_dataset", 1.0),
     ("language_table", 0.1),
-    
 ]
 
 DROID = [
@@ -303,14 +302,15 @@ DROID = [
 ]
 
 TRINITY = [
-    # ("eef_droid", 1.0),
-    # ("bridge_dataset", 6.0),
-    # ("fractal20220817_data", 3.0),
-    # ("dobbe", 6.0),
-    # ("robo_set", 6.0),
-    ("aloha_play_dataset", 1.0),
-    # ("aloha_mobile", 1.0),
-    # ("kit_irl_real_kitchen_lang", 10.0),
+    ("droid", 0.7),
+    ("eef_droid", 0.7),
+    ("bridge_dataset", 6.0),
+    ("fractal20220817_data", 3.0),
+    ("dobbe", 3.0),
+    ("robo_set", 3.0),
+    ("aloha_play_dataset", 12.0),
+    ("aloha_mobile", 6.0),
+    ("kit_irl_real_kitchen_lang", 12.0),
 ]
 
 ACTION_MIXED = [
@@ -318,7 +318,7 @@ ACTION_MIXED = [
     ("bridge_dataset", 1.0),
     ("fractal20220817_data", 1.0),
     ("aloha_static_dataset", 3.0),
-    ("aloha_mobile", 2.0),
+    ("aloha_mobile", 3.0),
     ("dobbe", 1.0),
     ("robo_set", 1.0),
 ]
