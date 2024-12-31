@@ -32,7 +32,7 @@ class EmbedVLM(nn.Module):
 
 
 class TokenVLM(nn.Module):
-    def __init__(self, model_name="microsoft/Florence-2-base", *args, **kwargs) -> None:
+    def __init__(self, model_name="microsoft/Florence-2-large", *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         
         # Initialize the tokenizer - all special tokens are included automatically
@@ -57,7 +57,7 @@ class TokenVLM(nn.Module):
             return_tensors='pt',
             padding="max_length",
             truncation=True,
-            max_length=150,
+            max_length=77,
             return_attention_mask=True
         )
         # decoded = self.tokenizer.batch_decode(batch_text_ids["input_ids"], skip_special_tokens=True)
