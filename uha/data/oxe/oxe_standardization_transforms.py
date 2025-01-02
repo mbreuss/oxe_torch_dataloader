@@ -207,14 +207,12 @@ def get_action_space_index(robot_type, num_arms, control_mode='position', return
     # Mapping of (robot_type, control_mode, num_arms) to indices
     action_space_mapping = {
         ('JOINT_POS', 'position', 1): 0,  # end-effector pos-1-arm pos
-        # ('EEF_POS', 'velocity', 1): 1,  # end-effector delta-1-arm
-        # ('JOINT_POS', 'position', 1): 2,  # joint-1-arm pos
-        # ('EEF_POS', 'position', 2): 3,  # end-effector pos-2-arm pos
         ('EEF_POS', 'velocity', 1): 1,  # end-effector delta-2-arm
         ('JOINT_POS_BIMANUAL_NAV', 'position', 2): 2,  # joint-2-arm pos with navigation
         ('JOINT_POS_BIMANUAL', 'position', 2): 2,  # joint-2-arm pos (unified for bimanual or regular)
         ('JOINT_POS_NAV', 'position', 1): 0,  # joint-1-arm pos with navigation 
         ('EEF_POS_NAV', 'velocity', 1): 1,  # end-effector delta-2-arm
+        ('NAV', 'position', 1): 3,  # navigation
     }
     
     # Get the index from the mapping

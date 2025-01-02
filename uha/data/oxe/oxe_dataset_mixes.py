@@ -302,13 +302,13 @@ DROID = [
 ]
 
 TRINITY = [
-    ("droid", 0.7),
-    ("eef_droid", 0.7),
+    #("droid", 0.7),
+    #("eef_droid", 0.7),
     ("bridge_dataset", 6.0),
-    ("fractal20220817_data", 3.0),
-    ("dobbe", 3.0),
-    ("robo_set", 3.0),
-    ("aloha_play_dataset", 12.0),
+    #("fractal20220817_data", 3.0),
+    #("dobbe", 3.0),
+    #("robo_set", 3.0),
+    #("aloha_play_dataset", 12.0),
     ("aloha_mobile", 6.0),
     ("kit_irl_real_kitchen_lang", 12.0),
 ]
